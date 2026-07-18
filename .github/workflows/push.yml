@@ -1,0 +1,175 @@
+name: CI
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.head_ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+
+      - uses: ./.github/actions/setup
+
+      - name: Stub eventBundle.json for import resolver
+        run: |
+          mkdir -p src/data
+          echo '{"events":[]}' > src/data/eventBundle.json
+
+      - run: bun lint
+
+      - name: Ensure no uncommitted changes after lint
+        run: |
+          if ! git diff --quiet; then
+            echo "Lint produced changes:"
+            git status
+            git diff
+            exit 1
+          fi
+
+  parse:
+    if: github.event_name != 'pull_request_target' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+      PROXY_URL: ${{ secrets.PROXY_URL }}
+      PROXY_DOMAINS: pcms.university.innopolis.ru
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+
+      - uses: ./.github/actions/setup
+
+      - name: Parse
+        run: bun parse
+
+      - name: Verify parse output exists
+        run: |
+          test -f src/data/eventBundle.json || { echo "bun parse did not produce src/data/eventBundle.json"; exit 1; }
+          test -d src/data/parsed || { echo "bun parse did not produce src/data/parsed/"; exit 1; }
+
+      - name: Upload eventBundle artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: event-bundle
+          path: src/data/eventBundle.json
+          if-no-files-found: error
+
+  parse-diff:
+    needs: parse
+    if: needs.parse.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Find previous CI run with an event-bundle artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_BRANCH: ${{ github.event_name == 'pull_request_target' && github.base_ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+          PREV_RUN_ID=""
+
+          run_ids=$(gh run list -w CI -R "$GITHUB_REPOSITORY" --branch "$BASE_BRANCH" --status success \
+                      --limit 20 --json databaseId --jq '.[].databaseId')
+
+          for id in $run_ids; do
+            [ "$id" = "$GITHUB_RUN_ID" ] && continue
+            has_artifact=$(gh api \
+              "repos/$GITHUB_REPOSITORY/actions/runs/$id/artifacts" \
+              --jq '[.artifacts[] | select(.name == "event-bundle" and .expired == false)] | length')
+            if [ "$has_artifact" -gt 0 ]; then
+              PREV_RUN_ID="$id"
+              echo "Found previous CI run $id with event-bundle"
+              break
+            fi
+          done
+
+          if [ -z "$PREV_RUN_ID" ]; then
+            echo "::notice::No prior CI run with an event-bundle artifact found — skipping diff"
+            echo "SKIP=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          echo "PREV_RUN_ID=$PREV_RUN_ID" >> "$GITHUB_ENV"
+
+      - name: Download artifacts
+        if: env.SKIP != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prev /tmp/curr
+          gh run download "$PREV_RUN_ID" -R "$GITHUB_REPOSITORY" -n event-bundle -D /tmp/prev
+          gh run download "$GITHUB_RUN_ID" -R "$GITHUB_REPOSITORY" -n event-bundle -D /tmp/curr
+
+      - uses: actions/checkout@v6
+        if: env.SKIP != 'true'
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+
+      - uses: oven-sh/setup-bun@v2
+        if: env.SKIP != 'true'
+
+      - name: Show diff in log
+        if: env.SKIP != 'true'
+        run: bun scripts/bundleDiff.ts /tmp/prev/eventBundle.json /tmp/curr/eventBundle.json
+
+  deploy:
+    needs: parse
+    if: |
+      needs.parse.result == 'success' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup
+
+      - name: Download eventBundle artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p src/data
+          gh run download "$GITHUB_RUN_ID" \
+            -n event-bundle \
+            -D src/data/
+
+      - name: Build
+        run: bun run build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,39 @@
+name: Extract Takedown ФИО
+description: Parse the ФИО field from a takedown issue body
+
+inputs:
+  body:
+    description: Issue body (markdown rendered by GitHub issue forms)
+    required: true
+
+outputs:
+  fio:
+    description: Extracted ФИО (trimmed)
+    value: ${{ steps.parse.outputs.result }}
+
+runs:
+  using: composite
+  steps:
+    - id: parse
+      uses: actions/github-script@v8
+      env:
+        ISSUE_BODY: ${{ inputs.body }}
+      with:
+        result-encoding: string
+        script: |
+          const body = process.env.ISSUE_BODY ?? "";
+
+          // Issue forms render fields as: ### <Label>\n\n<value>\n\n
+          const m = body.match(/###\s+ФИО[^\n]*\n+([^\n]+)/);
+          if (!m) {
+            core.setFailed("Cannot extract ФИО field from issue body");
+            return "";
+          }
+
+          const fio = m[1].trim();
+          if (!fio || fio === "_No response_") {
+            core.setFailed("ФИО field is empty");
+            return "";
+          }
+
+          return fio;

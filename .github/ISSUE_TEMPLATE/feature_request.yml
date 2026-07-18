@@ -1,0 +1,25 @@
+name: Предложить улучшение
+description: Идея новой фичи или улучшения
+labels: [enhancement]
+
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Проблема / мотивация
+      description: Какую задачу мы решаем?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Желаемый функционал
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Дополнительный контекст
+      description: Всё, что помогает понять идею

@@ -1,0 +1,42 @@
+name: Setup Bun environment
+description: >
+  Set up Bun, restore node_modules and parse cache, install deps.
+  Drops all caches if the latest commit message contains [drop-cache].
+
+runs:
+  using: composite
+  steps:
+    - uses: oven-sh/setup-bun@v2
+
+    - name: Cache node_modules
+      id: nm-cache
+      uses: actions/cache@v5
+      with:
+        path: node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+        restore-keys: node-modules-${{ runner.os }}-
+
+    - name: Restore parse cache
+      uses: actions/cache@v5
+      with:
+        path: src/data/cache
+        key: parse-cache-${{ github.head_ref || github.ref_name }}-${{ github.run_id }}
+        restore-keys: |
+          parse-cache-${{ github.head_ref || github.ref_name }}-
+          parse-cache-main-
+
+    - name: Drop caches if [drop-cache] in commit
+      id: drop-cache
+      run: |
+        if git log -1 --format=%B HEAD | grep -qF '[drop-cache]'; then
+          echo "Dropping all caches per [drop-cache] marker"
+          rm -rf src/data/cache node_modules
+          echo "dropped=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "dropped=false" >> "$GITHUB_OUTPUT"
+        fi
+      shell: bash
+
+    - name: Install dependencies
+      run: bun install --frozen-lockfile
+      shell: bash

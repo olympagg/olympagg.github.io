@@ -1,0 +1,35 @@
+name: Скрыть данные с сайта
+description: Заполните форму, чтобы запросить скрытие профиля из агрегатора
+title: "[TAKEDOWN] Запрос на скрытие"
+labels: [takedown]
+
+body:
+  - type: input
+    id: fio
+    attributes:
+      label: ФИО (как указано в сервисе)
+      placeholder: Иванов Иван Иванович
+    validations:
+      required: true
+
+  - type: input
+    id: contact
+    attributes:
+      label: Контакт для связи
+      description: Telegram, VK, e-mail — любой способ связаться с вами
+      placeholder: "@username / mail@example.com"
+    validations:
+      required: true
+
+  - type: textarea
+    id: comment
+    attributes:
+      label: Комментарий (необязательно)
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Подтверждение
+      options:
+        - label: Я подтверждаю, что являюсь указанным человеком либо уполномочен(а) действовать от его/её имени
+          required: true

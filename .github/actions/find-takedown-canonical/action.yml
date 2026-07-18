@@ -1,0 +1,129 @@
+name: Find Takedown Canonical
+description: Match a user-provided ФИО against the latest eventBundle and return the canonical service-form fullName.
+
+inputs:
+  fio:
+    description: User-provided ФИО
+    required: true
+  events-path:
+    description: Path to eventBundle.json
+    required: true
+
+outputs:
+  status:
+    description: "ok | ambiguous | not_found"
+    value: ${{ steps.search.outputs.status }}
+  canonical:
+    description: Canonical fullName as stored in the service (set when status=ok)
+    value: ${{ steps.search.outputs.canonical }}
+  stage:
+    description: "normalized | typo (set when status=ok)"
+    value: ${{ steps.search.outputs.stage }}
+  candidates:
+    description: JSON array of fullName candidates (set when status=ambiguous)
+    value: ${{ steps.search.outputs.candidates }}
+
+runs:
+  using: composite
+  steps:
+    - id: search
+      uses: actions/github-script@v8
+      env:
+        FIO: ${{ inputs.fio }}
+        EVENTS_PATH: ${{ inputs.events-path }}
+      with:
+        script: |
+          const fs = require("node:fs");
+          const fio = process.env.FIO;
+
+          const norm = (s) =>
+            s.toLowerCase().replaceAll("ё", "е").replace(/\s+/g, " ").trim();
+
+          const MAX_TYPO_DISTANCE = 1;
+
+          // Levenshtein distance with early exit when known to exceed
+          // MAX_TYPO_DISTANCE (returns MAX_TYPO_DISTANCE + 1 in that case).
+          const levAtMostOne = (a, b) => {
+            if (a === b) {
+              return 0;
+            }
+            if (Math.abs(a.length - b.length) > MAX_TYPO_DISTANCE) {
+              return MAX_TYPO_DISTANCE + 1;
+            }
+            const m = a.length;
+            const n = b.length;
+            const dp = new Array(n + 1);
+            for (let j = 0; j <= n; j++) {
+              dp[j] = j;
+            }
+            for (let i = 1; i <= m; i++) {
+              let prev = dp[0];
+              dp[0] = i;
+              let rowMin = dp[0];
+              for (let j = 1; j <= n; j++) {
+                const tmp = dp[j];
+                dp[j] =
+                  a[i - 1] === b[j - 1]
+                    ? prev
+                    : 1 + Math.min(prev, dp[j], dp[j - 1]);
+                if (dp[j] < rowMin) {
+                  rowMin = dp[j];
+                }
+                prev = tmp;
+              }
+              if (rowMin > MAX_TYPO_DISTANCE) {
+                return MAX_TYPO_DISTANCE + 1;
+              }
+            }
+            return dp[n];
+          };
+
+          const bundle = JSON.parse(
+            fs.readFileSync(process.env.EVENTS_PATH, "utf8"),
+          );
+          const target = norm(fio);
+
+          // Two-stage search over normalized forms:
+          //   1) normalized exact match (case/ё/whitespace-insensitive)
+          //   2) Levenshtein distance == 1 (typo fallback)
+          const normalized = new Set();
+          const typo = new Set();
+          for (const event of bundle.events ?? []) {
+            for (const p of event.participations ?? []) {
+              if (!p.fullName) {
+                continue;
+              }
+              const pn = norm(p.fullName);
+              if (pn === target) {
+                normalized.add(p.fullName);
+                continue;
+              }
+              if (levAtMostOne(pn, target) === MAX_TYPO_DISTANCE) {
+                typo.add(p.fullName);
+              }
+            }
+          }
+
+          let pool;
+          let stage;
+          if (normalized.size > 0) {
+            pool = normalized;
+            stage = "normalized";
+          } else if (typo.size > 0) {
+            pool = typo;
+            stage = "typo";
+          }
+
+          if (!pool) {
+            core.setOutput("status", "not_found");
+            return;
+          }
+          if (pool.size > 1) {
+            core.setOutput("status", "ambiguous");
+            core.setOutput("candidates", JSON.stringify([...pool]));
+            return;
+          }
+
+          core.setOutput("status", "ok");
+          core.setOutput("canonical", [...pool][0]);
+          core.setOutput("stage", stage);

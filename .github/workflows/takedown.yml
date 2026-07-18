@@ -1,0 +1,220 @@
+name: Takedown
+
+on:
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  verify:
+    if: github.event.action == 'labeled' && github.event.label.name == 'takedown'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Extract FIO
+        id: parse
+        uses: ./.github/actions/extract-takedown-fio
+        with:
+          body: ${{ github.event.issue.body }}
+
+      - name: Set issue title
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ github.event.issue.number }}
+          FIO: ${{ steps.parse.outputs.fio }}
+        run: gh issue edit "$ISSUE" --title "[TAKEDOWN] $FIO"
+
+      - name: Download latest eventBundle artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          RUN_ID=$(gh run list -w CI -b main --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+            echo "No successful CI runs on main yet; nothing to check against"
+            exit 1
+          fi
+          mkdir -p /tmp/data
+          gh run download "$RUN_ID" -n event-bundle -D /tmp/data
+
+      - name: Find canonical fullName
+        id: find
+        uses: ./.github/actions/find-takedown-canonical
+        with:
+          fio: ${{ steps.parse.outputs.fio }}
+          events-path: /tmp/data/eventBundle.json
+
+      - name: Respond on issue
+        uses: actions/github-script@v8
+        env:
+          FIO: ${{ steps.parse.outputs.fio }}
+          STATUS: ${{ steps.find.outputs.status }}
+          CANONICAL: ${{ steps.find.outputs.canonical }}
+          STAGE: ${{ steps.find.outputs.stage }}
+          CANDIDATES: ${{ steps.find.outputs.candidates }}
+        with:
+          script: |
+            const fs = require("node:fs");
+            const fio = process.env.FIO;
+            const status = process.env.STATUS;
+            const canonical = process.env.CANONICAL;
+            const stage = process.env.STAGE;
+            const candidates = process.env.CANDIDATES
+              ? JSON.parse(process.env.CANDIDATES)
+              : [];
+            const issue = context.issue.number;
+
+            const enc = (s) => encodeURIComponent(s).replaceAll("%20", "+");
+            const comment = (body) =>
+              github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: issue,
+                body,
+              });
+            const close = (reason) =>
+              github.rest.issues.update({
+                ...context.repo,
+                issue_number: issue,
+                state: "closed",
+                state_reason: reason,
+              });
+
+            if (status === "not_found") {
+              await comment(
+                `Не нашли **${fio}** на сайте. Пожалуйста, проверьте корректность ФИО, после чего отправьте новый запрос.`,
+              );
+              await close("not_planned");
+              return;
+            }
+
+            if (status === "ambiguous") {
+              const list = candidates.map((n) => `- \`${n}\``).join("\n");
+              await comment(
+                `По запросу **${fio}** нашли несколько вариантов:\n\n${list}\n\nОткройте новый запрос с точным написанием нужного ФИО.`,
+              );
+              await close("not_planned");
+              return;
+            }
+
+            const exclusions = JSON.parse(
+              fs.readFileSync("src/data/excludeFullNames.json", "utf8"),
+            );
+            if (exclusions.includes(canonical)) {
+              await comment(`ФИО **${canonical}** уже скрыто. Закрываю issue.`);
+              await close("completed");
+              return;
+            }
+
+            const url = `https://olympagg.github.io/person/${enc(canonical)}`;
+            const note =
+              stage === "typo"
+                ? `\n\n(Похоже на опечатку: нашли близкое совпадение \`${canonical}\`. Если это не вы, откройте новый запрос с точным написанием.)`
+                : "";
+            await comment(
+              `Запрос принят, ожидайте его обработки.\n\nПрофиль: [${canonical}](${url})${note}`,
+            );
+
+  apply:
+    if: github.event.action == 'labeled' && github.event.label.name == 'takedown-approved'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: takedown-apply
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      issues: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract FIO
+        id: parse
+        uses: ./.github/actions/extract-takedown-fio
+        with:
+          body: ${{ github.event.issue.body }}
+
+      - name: Download latest eventBundle artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          RUN_ID=$(gh run list -w CI -b main --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+            echo "No successful CI runs on main yet; cannot determine canonical fullName"
+            exit 1
+          fi
+          mkdir -p /tmp/data
+          gh run download "$RUN_ID" -n event-bundle -D /tmp/data
+
+      - name: Find canonical fullName
+        id: find
+        uses: ./.github/actions/find-takedown-canonical
+        with:
+          fio: ${{ steps.parse.outputs.fio }}
+          events-path: /tmp/data/eventBundle.json
+
+      - name: Guard against non-ok status
+        env:
+          STATUS: ${{ steps.find.outputs.status }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          if [ "$STATUS" != "ok" ]; then
+            gh issue comment "$ISSUE" --body "Не получилось применить takedown: повторный поиск дал статус \`$STATUS\`. Снимите метку, проверьте ФИО и попробуйте ещё раз."
+            exit 1
+          fi
+
+      - name: Update excludeFullNames.json
+        uses: actions/github-script@v8
+        env:
+          CANONICAL: ${{ steps.find.outputs.canonical }}
+        with:
+          script: |
+            const fs = require("node:fs");
+            const path = "src/data/excludeFullNames.json";
+            const arr = JSON.parse(fs.readFileSync(path, "utf8"));
+            arr.push(process.env.CANONICAL);
+            const sorted = [...new Set(arr)].sort((a, b) =>
+              a.localeCompare(b, "ru"),
+            );
+            fs.writeFileSync(path, JSON.stringify(sorted, null, 2) + "\n");
+
+      - name: Commit and push
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet src/data/excludeFullNames.json; then
+            gh issue comment "$ISSUE" --body "ФИО уже было в списке исключений, изменения не требуются."
+            gh issue close "$ISSUE" --reason completed
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/data/excludeFullNames.json
+          git commit -m "takedown: hide person per #$ISSUE"
+          git pull --rebase origin main
+          git push origin main
+          COMMIT_SHA=$(git rev-parse HEAD)
+          COMMIT_URL="https://github.com/$REPO/commit/$COMMIT_SHA"
+          gh issue comment "$ISSUE" --body "Данные скрыты: [ФИО добавлено в список исключений]($COMMIT_URL). Изменения появятся на сайте через несколько минут."
+          gh issue close "$ISSUE" --reason completed
+
+      - name: Trigger CI for takedown commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run push.yml --ref main

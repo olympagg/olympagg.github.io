@@ -1,0 +1,6 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["src/index.ts", "src/frontend.tsx", "src/sw.ts"],
+  "ignore": ["src/data/build/parsers/nto.ts"],
+  "ignoreExportsUsedInFile": true
+}
