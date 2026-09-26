@@ -59,7 +59,7 @@ export async function loadPdfText(
 }
 
 function normalizeCellValue(raw: string): string {
-  return raw.replace(/\s+/g, " ").trim();
+  return raw.replace(/\*/g, "").replace(/\s+/g, " ").trim();
 }
 
 export function parseTableRows<K extends string | number>(

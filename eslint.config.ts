@@ -102,6 +102,17 @@ export default defineConfig([
         },
       ],
       "import-x/no-duplicates": "error",
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["..", "../**"],
+              message: "Use the @/ alias instead of parent-relative imports.",
+            },
+          ],
+        },
+      ],
     },
   },
 

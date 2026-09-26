@@ -1,6 +1,8 @@
 import type { ParsedParticipation } from "@/data/types";
 import type { Brand, Digit } from "@/lib/types";
 
+import type { RcsoLevel } from "./rcso";
+
 export type FullName = Brand<"FullName", string>;
 export type Region = Brand<"Region", string>;
 export type City = Brand<"City", string>;
@@ -39,7 +41,9 @@ export interface EventMeta {
   id: EventId;
   name: string;
   groupName?: EventGroupName;
-  olympiadLevel?: 1 | 2 | 3;
+  rcsoName?: string;
+  rcsoTrack?: string;
+  rcsoLevel?: RcsoLevel;
   url: string;
   date: Date;
   maxScore: number;

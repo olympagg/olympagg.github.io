@@ -7,13 +7,7 @@ import innoParsers from "./inno";
 import ioipParsers from "./ioip";
 import moshParsers from "./mosh";
 import prodParsers from "./prod";
-import reoParsers from "./reo";
-import rmoParsers from "./rmo";
-import roaiParsers from "./roai";
-import rocsParsers from "./rocs";
-import roiParsers from "./roi";
-import rphoParsers from "./rpho";
-import rroParsers from "./rro";
+import vosParsers from "./vos";
 
 const parsers: Record<EventId, ParticipationParser> = {
   ...danoParsers,
@@ -23,13 +17,7 @@ const parsers: Record<EventId, ParticipationParser> = {
   ...ioipParsers,
   ...moshParsers,
   ...prodParsers,
-  ...reoParsers,
-  ...rmoParsers,
-  ...roiParsers,
-  ...rocsParsers,
-  ...roaiParsers,
-  ...rphoParsers,
-  ...rroParsers,
+  ...vosParsers,
 };
 
 export default parsers;

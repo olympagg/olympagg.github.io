@@ -13,18 +13,23 @@ import {
 import { Link } from "react-router";
 
 import { BackButton } from "@/components/shared/back-button";
+import { MetaItem, MetaRow } from "@/components/shared/meta-row";
 import { NotFoundMessage } from "@/components/shared/not-found-message";
+import { ScoreDistributionChart } from "@/components/shared/score-distribution-chart";
 import { StatCard } from "@/components/shared/stat-card";
 import { TaskScoreTable } from "@/components/shared/task-score-table";
 import { useDataStore } from "@/contexts/data-context";
 import type { EventData, Participation } from "@/data/types";
-import { ParticipationStatus, type WinnerDegree } from "@/data/types/base";
+import { ParticipationStatus, WinnerDegree } from "@/data/types/base";
 import {
   extractFirstName,
   formatShortName,
   formatTrackName,
   formatWinnerDegree,
+  normalizeWinnerDegree,
+  STATUS_LABELS,
 } from "@/lib/format";
+import { formatGroupContext } from "@/lib/group";
 import { routes, useParticipationParams } from "@/lib/routes";
 import { pageTitle } from "@/lib/title";
 import { cn, formatNumber, formatOptionalNumber } from "@/lib/utils";
@@ -33,17 +38,11 @@ function getPercentileLabel(
   event: EventData,
   participation: Participation,
 ): string {
-  const { percentileRanking } = event.meta;
-  if (
-    percentileRanking === "participationGrade" &&
-    participation.participationGrade != null
-  ) {
-    return `Перцентиль в ${participation.participationGrade} классе`;
-  }
-  if (percentileRanking === "track" && participation.track) {
-    return `Перцентиль в треке ${formatTrackName(participation.track)}`;
-  }
-  return "Перцентиль";
+  const context = formatGroupContext(
+    event.meta.percentileRanking,
+    participation,
+  );
+  return context ? `Перцентиль ${context}` : "Перцентиль";
 }
 
 function getGradeLabel(
@@ -62,56 +61,35 @@ function getGradeLabel(
   return grade != null ? `${grade} класс` : null;
 }
 
-const META_ROW =
-  "flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground";
-
 const STATUS_META: Record<
   ParticipationStatus,
   { icon: LucideIcon; className: string; label: string }
 > = {
   [ParticipationStatus.WINNER]: {
     icon: Trophy,
-    className: "text-amber-400",
-    label: "Победитель",
+    className: "text-gold",
+    label: STATUS_LABELS[ParticipationStatus.WINNER],
   },
   [ParticipationStatus.PRIZE_WINNER]: {
     icon: Medal,
-    className: "text-sky-400",
-    label: "Призер",
+    className: "text-silver",
+    label: STATUS_LABELS[ParticipationStatus.PRIZE_WINNER],
   },
   [ParticipationStatus.FINALIST]: {
     icon: Info,
     className: "text-foreground",
-    label: "Участник",
+    label: STATUS_LABELS[ParticipationStatus.FINALIST],
   },
 };
 
-function MetaItem({
-  icon: Icon,
-  to,
-  className,
-  children,
-}: {
-  icon: LucideIcon;
-  to?: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  const cls = cn("flex items-center gap-1.5", className);
-  const inner = (
-    <>
-      <Icon className="size-3.5 shrink-0" />
-      {children}
-    </>
-  );
-  return to ? (
-    <Link to={to} className={cls}>
-      {inner}
-    </Link>
-  ) : (
-    <span className={cls}>{inner}</span>
-  );
-}
+const DEGREE_TEXT_COLORS: Record<
+  Exclude<WinnerDegree, WinnerDegree.NONE>,
+  string
+> = {
+  [WinnerDegree.FIRST]: "text-gold",
+  [WinnerDegree.SECOND]: "text-silver",
+  [WinnerDegree.THIRD]: "text-bronze",
+};
 
 function StatusLabel({
   status,
@@ -121,11 +99,12 @@ function StatusLabel({
   winnerDegree?: WinnerDegree;
 }) {
   const { icon, className, label } = STATUS_META[status];
-  const degree = formatWinnerDegree(winnerDegree);
+  const degree = normalizeWinnerDegree(winnerDegree);
+  const color = degree ? DEGREE_TEXT_COLORS[degree] : className;
 
   return (
-    <MetaItem icon={icon} className={cn("font-medium", className)}>
-      {degree ?? label}
+    <MetaItem icon={icon} className={cn("font-medium", color)}>
+      {formatWinnerDegree(degree) ?? label}
     </MetaItem>
   );
 }
@@ -164,8 +143,12 @@ export function ParticipationPage() {
       {team}
     </MetaItem>
   ) : null;
-  const hasContext =
-    region != null || school != null || gradeLabel != null || track != null;
+  const trackItem = track ? (
+    <MetaItem icon={Route} className="font-medium text-foreground">
+      {formatTrackName(track)}
+    </MetaItem>
+  ) : null;
+  const hasContext = region != null || school != null || gradeLabel != null;
   const contextItems = (
     <>
       {region && (
@@ -195,7 +178,6 @@ export function ParticipationPage() {
         </MetaItem>
       )}
       {gradeLabel && <MetaItem icon={GraduationCap}>{gradeLabel}</MetaItem>}
-      {track && <MetaItem icon={Route}>{formatTrackName(track)}</MetaItem>}
     </>
   );
 
@@ -233,19 +215,20 @@ export function ParticipationPage() {
         </p>
       </div>
 
-      {teamItem ? (
+      {teamItem || trackItem ? (
         <div className="space-y-1.5">
-          {hasContext && <div className={META_ROW}>{contextItems}</div>}
-          <div className={META_ROW}>
+          {hasContext && <MetaRow>{contextItems}</MetaRow>}
+          <MetaRow>
             {statusItem}
             {teamItem}
-          </div>
+            {trackItem}
+          </MetaRow>
         </div>
       ) : (
-        <div className={META_ROW}>
+        <MetaRow>
           {statusItem}
           {contextItems}
-        </div>
+        </MetaRow>
       )}
 
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
@@ -283,6 +266,8 @@ export function ParticipationPage() {
           tasks={participation.soloTaskScores}
         />
       ) : null}
+
+      <ScoreDistributionChart event={event} participation={participation} />
     </div>
   );
 }

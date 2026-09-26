@@ -7,13 +7,7 @@ import innoEvents from "./inno";
 import ioipEvents from "./ioip";
 import moshEvents from "./mosh";
 import prodEvents from "./prod";
-import reoEvents from "./reo";
-import rmoEvents from "./rmo";
-import roaiEvents from "./roai";
-import rocsEvents from "./rocs";
-import roiEvents from "./roi";
-import rphoEvents from "./rpho";
-import rroEvents from "./rro";
+import vosEvents from "./vos";
 
 const eventsMeta: EventMeta[] = [
   ...danoEvents,
@@ -23,13 +17,7 @@ const eventsMeta: EventMeta[] = [
   ...ioipEvents,
   ...moshEvents,
   ...prodEvents,
-  ...reoEvents,
-  ...rmoEvents,
-  ...roaiEvents,
-  ...rocsEvents,
-  ...roiEvents,
-  ...rphoEvents,
-  ...rroEvents,
+  ...vosEvents,
 ];
 
 export default eventsMeta;

@@ -4,15 +4,18 @@ import type {
   EventId,
   EventMeta,
   FullName,
+  ParticipationStatus,
   Region,
   School,
   Team,
+  WinnerDegree,
 } from "./base";
 import type { DanoParticipation } from "./dano";
 import type { HSEParticipation } from "./hse";
 import type { IndividualParticipation } from "./individual";
 import type { NTOParticipation } from "./nto";
 import type { ProdParticipation } from "./prod";
+import type { RcsoCatalog } from "./rcso";
 
 export type ParsedParticipation = SmartUnion<
   | DanoParticipation
@@ -30,14 +33,31 @@ export type Participation = ParsedParticipation & {
   rank: number;
 };
 
+export interface DistributionPoint {
+  score: number;
+  density: number;
+}
+
+export type ThresholdKey =
+  | Exclude<WinnerDegree, WinnerDegree.NONE>
+  | Exclude<ParticipationStatus, ParticipationStatus.FINALIST>;
+export type StatusThresholds = Partial<Record<ThresholdKey, number>>;
+
+export interface ScoreDistribution {
+  curve: DistributionPoint[];
+  thresholds: StatusThresholds;
+}
+
 export interface EventData {
   id: EventId;
   meta: EventMeta;
   participations: Participation[];
+  distributions?: Record<string, ScoreDistribution>;
 }
 
 export interface EventBundle {
   events: EventData[];
+  rcsoCatalogs: RcsoCatalog[];
 }
 
 export interface PersonData {

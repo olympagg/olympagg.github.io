@@ -1,5 +1,5 @@
-import type { PersonData, SchoolData } from "../../types";
-import type { FullName, School } from "../../types/base";
+import type { PersonData, SchoolData } from "@/data/types";
+import type { FullName, School } from "@/data/types/base";
 
 export function buildSchoolData(
   personsData: Map<FullName, PersonData>,

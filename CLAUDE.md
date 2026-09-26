@@ -11,11 +11,15 @@ Default to Bun, never Node.js or Vite.
 
 Install dependencies by `bun install`.
 
-Then you need to fill `src/data/eventBundle.json` artifact (gitignored).
+`src/data/eventBundle.json` is required for build and running dev server.
 
-For linting and testing purposes, you can create this file with `{"events":[]}`. This will satisfy tsc.
+If it's missing in your environment, either run `bun parse` or fill the file with `{"events":[]}` (this will satisfy tsc).
 
-Otherwise, fetch `event-bundle` artifact from latest `push.yml` GitHub Actions pipeline run on main. Place this file at the path above.
+`bun parse` caches every fetched URL in `src/data/cache/`; re-fetches only happen when a URL isn't cached yet. It needs the user's consent only when the cache is empty (first run in this environment, or a newly added source).
+
+`bun parse <filter>` will only parse events whose id includes `<filter>`,
+emitting any other events. Use for quick testing. Run plain `bun parse` in the end
+to rebuild the bundle.
 
 ## Lint
 

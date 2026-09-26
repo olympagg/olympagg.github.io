@@ -1,18 +1,22 @@
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
-import { CalendarDays, ChevronsUp, LinkIcon, Trophy } from "lucide-react";
+import { CalendarDays, FileText, LinkIcon, Search, Trophy } from "lucide-react";
+import { useState } from "react";
 import { useNavigate } from "react-router";
 
 import { BackButton } from "@/components/shared/back-button";
 import { DataTable } from "@/components/shared/data-table";
 import { ExternalLinkText } from "@/components/shared/external-link";
+import { MetaItem, MetaRow } from "@/components/shared/meta-row";
 import { NotFoundMessage } from "@/components/shared/not-found-message";
 import { SortableHeader } from "@/components/shared/sortable-header";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useDataStore } from "@/contexts/data-context";
 import type { Participation } from "@/data/types";
 import { ParticipationStatus, WinnerDegree } from "@/data/types/base";
 import type { EventId, Team } from "@/data/types/base";
+import { getAcademicYear } from "@/lib/academic";
 import { formatRcsoLevel } from "@/lib/format";
 import { routes, useEventParams } from "@/lib/routes";
 import { pageTitle } from "@/lib/title";
@@ -153,8 +157,10 @@ export function EventPage() {
   const { eventId } = useEventParams();
   const store = useDataStore();
   const navigate = useNavigate();
+  const [query, setQuery] = useState("");
 
   const event = store.getEvent(eventId);
+
   if (!event) {
     return <NotFoundMessage message="Мероприятие не найдено" />;
   }
@@ -190,46 +196,69 @@ export function EventPage() {
             </span>
           </h1>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <CalendarDays className="size-3.5" />
-            {formatDate(event.meta.date)}
-          </span>
-          <a
+        <MetaRow className="mt-2">
+          <MetaItem icon={CalendarDays}>{formatDate(event.meta.date)}</MetaItem>
+          <MetaItem
+            icon={LinkIcon}
             href={event.meta.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 transition-colors hover:text-foreground"
+            className="transition-colors hover:text-foreground"
           >
-            <LinkIcon className="size-3.5" />
             {event.meta.url}
-          </a>
-          {event.meta.olympiadLevel != null && (
-            <span className="flex items-center gap-1.5">
-              <ChevronsUp className="size-3.5" />
-              {formatRcsoLevel(event.meta.olympiadLevel)} уровень РСОШ
-            </span>
+          </MetaItem>
+          {event.meta.rcsoLevel != null && (
+            <MetaItem
+              icon={FileText}
+              to={
+                event.meta.rcsoName && event.meta.rcsoTrack
+                  ? routes.rcsoTrack(
+                      event.meta.rcsoName,
+                      event.meta.rcsoTrack,
+                      getAcademicYear(event.meta.date),
+                    )
+                  : undefined
+              }
+              className={
+                event.meta.rcsoName && event.meta.rcsoTrack
+                  ? "transition-colors hover:text-foreground"
+                  : undefined
+              }
+            >
+              {formatRcsoLevel(event.meta.rcsoLevel)} уровень РСОШ
+            </MetaItem>
           )}
-        </div>
+        </MetaRow>
       </div>
 
       <Separator />
 
       <div>
-        <h2 className="mb-3 text-lg font-semibold">
-          {event.participations.length}{" "}
-          {allDiplomants
-            ? pluralize(event.participations.length, [
-                "дипломант",
-                "дипломанта",
-                "дипломантов",
-              ])
-            : pluralize(event.participations.length, [
-                "участник",
-                "участника",
-                "участников",
-              ])}
-        </h2>
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg font-semibold">
+            {event.participations.length}{" "}
+            {allDiplomants
+              ? pluralize(event.participations.length, [
+                  "дипломант",
+                  "дипломанта",
+                  "дипломантов",
+                ])
+              : pluralize(event.participations.length, [
+                  "участник",
+                  "участника",
+                  "участников",
+                ])}
+          </h2>
+          <div className="relative sm:w-64">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+              }}
+              placeholder="Поиск по ФИО"
+              className="pl-8"
+            />
+          </div>
+        </div>
         <DataTable
           columns={columns}
           data={event.participations}

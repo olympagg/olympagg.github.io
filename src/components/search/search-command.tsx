@@ -169,9 +169,12 @@ function SearchResultsList({
 export function SearchCommand({
   className,
   placeholder = "Поиск",
+  onActiveChange,
 }: {
   className?: string;
   placeholder?: string;
+  /** Fires when the bar gains/loses focus, so the layout can make room for it. */
+  onActiveChange?: (active: boolean) => void;
 }) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
@@ -199,6 +202,10 @@ export function SearchCommand({
       }
     }, 0);
   };
+
+  useEffect(() => {
+    onActiveChange?.(focused);
+  }, [focused, onActiveChange]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {

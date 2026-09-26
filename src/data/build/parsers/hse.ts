@@ -3,14 +3,13 @@ import {
   parseNumber,
   parseStatus,
 } from "@/data/build/parsers/utils/parse";
-
 import {
   ParticipationStatus,
   type FullName,
   type ParticipationParser,
   type Region,
-} from "../../types/base";
-import type { HSEParticipation } from "../../types/hse";
+} from "@/data/types/base";
+import type { HSEParticipation } from "@/data/types/hse";
 
 import { fetchBuffer } from "./utils/fetch";
 import { normalizeFullName, normalizeRussian } from "./utils/normalize";
@@ -36,6 +35,24 @@ const RESULTS_COLUMNS = [
 const WINNERS_COLUMNS = [
   "index",
   "position",
+  "code",
+  "fullName",
+  "region",
+  "score",
+] as const;
+
+// 2023 and earlier do not have position
+const LEGACY_FORMAT_LAST_YEAR = 2023;
+
+const LEGACY_RESULTS_COLUMNS = [
+  "index",
+  "workCode",
+  "region",
+  "score",
+] as const;
+
+const LEGACY_WINNERS_COLUMNS = [
+  "index",
   "code",
   "fullName",
   "region",
@@ -118,12 +135,17 @@ type OlympiadsResponse = [
 ];
 
 type TrackName =
-  | "Информатика"
-  | "Математика"
+  | "Основы бизнеса"
   | "Промышленное программирование"
+  | "Инженерные науки"
+  | "Дизайн"
   | "Экономика"
+  | "Финансовая грамотность"
+  | "Информатика"
+  | "Право"
+  | "Математика"
   | "Физика"
-  | "Право";
+  | "Обществознание";
 
 export default class HseParser implements ParticipationParser {
   olympiadsUrl = "https://olymp50.hse.ru/hseAnonymous/batch.js";
@@ -244,7 +266,12 @@ export default class HseParser implements ParticipationParser {
 
       const resultsUrl = this.resultsUrl.replace("{resultId}", resultId);
       const resultsText = await loadPdfText({ url: resultsUrl });
-      const matches = parseTableRows(resultsText, RESULTS_COLUMNS).filter(
+      const resultsColumns =
+        this.year <= LEGACY_FORMAT_LAST_YEAR
+          ? LEGACY_RESULTS_COLUMNS
+          : RESULTS_COLUMNS;
+
+      const matches = parseTableRows(resultsText, resultsColumns).filter(
         (row) => !isNaN(Number(row.index)) && row.index.trim() !== "",
       );
 
@@ -289,7 +316,12 @@ export default class HseParser implements ParticipationParser {
     for (const [grade, resultId] of resultIds.entries()) {
       const winnersUrl = this.winnersUrl.replace("{resultId}", resultId);
       const winnersText = await loadPdfText({ url: winnersUrl });
-      const rows = parseTableRows(winnersText, WINNERS_COLUMNS);
+      const winnersColumns =
+        this.year <= LEGACY_FORMAT_LAST_YEAR
+          ? LEGACY_WINNERS_COLUMNS
+          : WINNERS_COLUMNS;
+
+      const rows = parseTableRows(winnersText, winnersColumns);
 
       for (const row of rows) {
         if (!NUMERIC_RE.test(row.index)) {

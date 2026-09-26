@@ -1,6 +1,7 @@
 import { join } from "node:path";
 
 import eventsMeta from "@/data/build/meta";
+import { parseRcsoCatalogs } from "@/data/build/parsers/rcso";
 import { buildEventData, type ParsedEvent } from "@/data/build/pipeline/event";
 import parsers from "@/data/build/registry";
 import type { EventId } from "@/data/types/base";
@@ -27,12 +28,18 @@ if (missingMeta.length > 0 || missingParser.length > 0) {
   );
 }
 
-const filter = process.argv[2];
+console.log("Parsing RCSO catalogs...");
+const rcsoCatalogs = await parseRcsoCatalogs();
+await Bun.write(
+  join(PARSED_DATA_DIR, "rcso.json"),
+  JSON.stringify(rcsoCatalogs, null, 2),
+);
 
+const eventsFilter = process.argv[2];
 const parsedEvents: ParsedEvent[] = [];
 
 for (const [eventId, parser] of Object.entries(parsers)) {
-  if (filter && !eventId.includes(filter)) {
+  if (eventsFilter && !eventId.includes(eventsFilter)) {
     continue;
   }
 
@@ -50,15 +57,11 @@ for (const [eventId, parser] of Object.entries(parsers)) {
 
   console.log(` ${parsedParticipations.length} rows`);
 
-  const meta = metaById.get(eventId as EventId);
-  if (!meta) {
-    throw new Error(`Could not find meta for ${eventId}`);
-  }
-
+  const meta = metaById.get(eventId as EventId)!;
   parsedEvents.push({ id: eventId as EventId, meta, parsedParticipations });
 }
 
-const events = [...buildEventData(parsedEvents).values()];
+const events = [...buildEventData(parsedEvents, rcsoCatalogs).values()];
 
-await Bun.write(OUT_PATH, JSON.stringify({ events }));
+await Bun.write(OUT_PATH, JSON.stringify({ events, rcsoCatalogs }));
 console.log(`\nWrote ${events.length} events to ${OUT_PATH}`);

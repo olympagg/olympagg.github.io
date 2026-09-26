@@ -9,14 +9,13 @@ import {
   parseStatus,
 } from "@/data/build/parsers/utils/parse";
 import type { ParticipationParser } from "@/data/types/base";
-
 import {
   parseCriteriaType,
   parseTrack,
   type ProdParticipation,
   type ProdTeamCriteriaType,
   type ProdTeamCriteriaValue,
-} from "../../types/prod";
+} from "@/data/types/prod";
 
 import { loadHtml } from "./utils/html";
 

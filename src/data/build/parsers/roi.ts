@@ -5,8 +5,7 @@ import {
 } from "@/data/build/parsers/utils/normalize";
 import type { ParticipationParser, TaskScore } from "@/data/types/base";
 import { ParticipationStatus } from "@/data/types/base";
-
-import type { IndividualParticipation } from "../../types/individual";
+import type { IndividualParticipation } from "@/data/types/individual";
 
 import { loadHtml } from "./utils/html";
 import { loadJson } from "./utils/json";
@@ -121,6 +120,7 @@ export default class RoiParser implements ParticipationParser {
         fullName: normalizeFullName(normalizeOcr(row.name)),
         region: normalizeRegion(row.location),
         studyGrade: row.form,
+        participationGrade: row.form,
         taskScores,
         score: row.sumRank,
         status,

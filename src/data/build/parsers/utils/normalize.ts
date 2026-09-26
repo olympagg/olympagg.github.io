@@ -1,3 +1,5 @@
+import { domainToUnicode } from "node:url";
+
 import type { City, FullName, Region, School, Team } from "@/data/types/base";
 
 export function normalizeRussian(value: string): string {
@@ -42,8 +44,7 @@ const LATIN = `[a-zA-Z]`;
 const CHAR = `[a-zA-Zа-яА-Я]`;
 const MIXED_PATTERN = `${CHAR}*(?:${CYRILLIC}${LATIN}|${LATIN}${CYRILLIC})${CHAR}*`;
 const MIXED_REGEX = new RegExp(MIXED_PATTERN, "g");
-// Non-global copy for `.test()`: calling `.test()` on the global regex would
-// advance its lastIndex and corrupt the outer `.replace()` iteration below.
+// Calling .test() on the global regex advances its lastIndex
 const MIXED_REGEX_TEST = new RegExp(MIXED_PATTERN);
 
 export function normalizeOcr(value: string): string {
@@ -52,7 +53,6 @@ export function normalizeOcr(value: string): string {
       .replace(/[a-zA-Z]/g, (char) => LATIN_TO_CYRILLIC[char] ?? char)
       .replace("sh", "ш");
 
-    // If substitution didn't resolve the mixed-script token, leave it as-is.
     return MIXED_REGEX_TEST.test(fixed) ? word : fixed;
   });
 }
@@ -106,4 +106,22 @@ export function normalizeTeam(team: string): Team {
 
 export function makeTeamKey(team: string): string {
   return normalizeTeam(team).toLowerCase();
+}
+
+export function normalizeUrl(url: string): string {
+  const trimmed = url
+    .trim()
+    .replace(/^http:\/\//i, "https://")
+    .replace(/^(https:\/\/)www\./i, "$1")
+    .replace(/\/+$/, "");
+
+  try {
+    const { hostname } = new URL(trimmed);
+    const unicodeHost = domainToUnicode(hostname.replace(/\.$/, ""));
+    return trimmed.replace(/^(https:\/\/)[^/?#]+/i, `$1${unicodeHost}`);
+  } catch {
+    // Not an absolute URL at all. Leaving as-is.
+  }
+
+  return trimmed;
 }

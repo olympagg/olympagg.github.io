@@ -1,4 +1,4 @@
-import { EyeOff, MessageSquare } from "lucide-react";
+import { MessageSquare, UserX } from "lucide-react";
 import { siGithub } from "simple-icons";
 
 import { cn } from "@/lib/utils";
@@ -40,7 +40,7 @@ export function Footer() {
             href={REPO_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className={cn("flex items-center gap-1.5", linkClass)}
+            className={cn("inline-flex items-center gap-1.5", linkClass)}
           >
             <SimpleIcon icon={siGithub} className="size-4" />
             <span>GitHub</span>
@@ -54,16 +54,16 @@ export function Footer() {
             href={TAKEDOWN_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className={cn("flex items-center gap-1.5", linkClass)}
+            className={cn("inline-flex items-center gap-1.5", linkClass)}
           >
-            <EyeOff className="size-4" />
-            <span>Скрыть данные</span>
+            <UserX className="size-4" />
+            <span>Удалить мои данные</span>
           </a>
           <a
             href={FEEDBACK_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className={cn("flex items-center gap-1.5", linkClass)}
+            className={cn("inline-flex items-center gap-1.5", linkClass)}
           >
             <MessageSquare className="size-4" />
             <span>Связаться с нами</span>

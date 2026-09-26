@@ -1,4 +1,4 @@
-import { ApiError, GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import pRetry from "p-retry";
 
 import { GEMINI_API_KEY, GEMINI_TEXT_MODEL } from "@/env";
@@ -13,7 +13,7 @@ export async function executePrompt<T>(prompt: string): Promise<T> {
         contents: prompt,
         config: {
           responseMimeType: "application/json",
-          temperature: 0.5,
+          temperature: 0,
           seed: 42,
           maxOutputTokens: 65536,
         },
@@ -23,15 +23,9 @@ export async function executePrompt<T>(prompt: string): Promise<T> {
       if (!text) {
         throw new Error("Empty response from model");
       }
+
       return JSON.parse(text) as T;
     },
-    {
-      retries: 5,
-      minTimeout: 2000,
-      factor: 2,
-      shouldRetry: ({ error }) =>
-        error instanceof SyntaxError ||
-        (error instanceof ApiError && [429, 500, 503].includes(error.status)),
-    },
+    { retries: 3 },
   );
 }

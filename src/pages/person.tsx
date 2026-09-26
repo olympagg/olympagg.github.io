@@ -6,11 +6,11 @@ import {
   User,
   Users,
 } from "lucide-react";
-import { Link } from "react-router";
 
 import { BackButton } from "@/components/shared/back-button";
 import { ClickableTableRow } from "@/components/shared/clickable-table-row";
 import { ExternalLinkText } from "@/components/shared/external-link";
+import { MetaItem, MetaRow } from "@/components/shared/meta-row";
 import { NotFoundMessage } from "@/components/shared/not-found-message";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -59,32 +59,29 @@ export function PersonPage() {
           <User className="size-6 shrink-0" />
           {person.fullName}
         </h1>
-        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+        <MetaRow className="mt-2">
           {person.region && (
-            <Link
+            <MetaItem
+              icon={MapPinned}
               to={routes.region(person.region)}
-              className="flex items-center gap-1.5 transition-colors hover:text-foreground"
+              className="transition-colors hover:text-foreground"
             >
-              <MapPinned className="size-3.5" />
               {person.region}
-            </Link>
+            </MetaItem>
           )}
           {person.school && (
-            <Link
+            <MetaItem
+              icon={School}
               to={routes.school(person.school)}
-              className="flex items-center gap-1.5 transition-colors hover:text-foreground"
+              className="transition-colors hover:text-foreground"
             >
-              <School className="size-3.5" />
               {person.school}
-            </Link>
+            </MetaItem>
           )}
           {graduationLabel && (
-            <span className="flex items-center gap-1.5">
-              <GraduationCap className="size-3.5" />
-              {graduationLabel}
-            </span>
+            <MetaItem icon={GraduationCap}>{graduationLabel}</MetaItem>
           )}
-        </div>
+        </MetaRow>
       </div>
 
       <div className="grid grid-cols-3 gap-2 sm:gap-4">

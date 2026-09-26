@@ -1,15 +1,14 @@
 import { median } from "simple-statistics";
 
-import { getAcademicYearEnd } from "@/lib/academic";
-import { MAX_SCHOOL_GRADE, MIN_TEAMMATE_COUNT } from "@/lib/constants";
-
 import type {
   EventData,
   Participation,
   PersonData,
   TeamData,
-} from "../../types";
-import type { EventId, FullName, Team } from "../../types/base";
+} from "@/data/types";
+import type { EventId, FullName, Team } from "@/data/types/base";
+import { getAcademicYearEnd } from "@/lib/academic";
+import { MAX_SCHOOL_GRADE, MIN_TEAMMATE_COUNT } from "@/lib/constants";
 
 function findGraduationYear(
   eventsData: Map<EventId, EventData>,

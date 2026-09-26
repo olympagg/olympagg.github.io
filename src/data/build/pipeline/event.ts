@@ -1,20 +1,24 @@
 import { mean, standardDeviation } from "simple-statistics";
 
-import { buildTypoMapping } from "@/lib/typos";
-import { round } from "@/lib/utils";
-
-import cityRegions from "../../cityRegions.json";
-import fullNameExclusions from "../../excludeFullNames.json";
-import normalizedRegions from "../../normalizedRegions.json";
-import normalizedSchools from "../../normalizedSchools.json";
-import type { EventData, ParsedParticipation } from "../../types";
+import cityRegions from "@/data/cityRegions.json";
+import fullNameExclusions from "@/data/excludeFullNames.json";
+import normalizedRegions from "@/data/normalizedRegions.json";
+import normalizedSchools from "@/data/normalizedSchools.json";
+import type { EventData, ParsedParticipation } from "@/data/types";
 import type {
   EventId,
   EventMeta,
   FullName,
   Region,
   School,
-} from "../../types/base";
+} from "@/data/types/base";
+import type { RcsoCatalog } from "@/data/types/rcso";
+import { getParticipationGroupKey } from "@/lib/group";
+import { buildTypoMapping } from "@/lib/typos";
+import { groupBy, round } from "@/lib/utils";
+
+import { calculateDistributions } from "./distribution";
+import { buildRcsoLevelIndex, resolveRcsoLevel } from "./rcso";
 
 const cityRegionsMapping: Record<string, string | null> = cityRegions;
 const fullNamesToExclude = new Set<string>(fullNameExclusions);
@@ -34,7 +38,7 @@ function normalizeSchools(participations: ParsedParticipation[]) {
     if (!participation.school) {
       return participation;
     }
-    const normalizedSchool = schoolsMapping[participation.school.toLowerCase()];
+    const normalizedSchool = schoolsMapping[participation.school];
     return normalizedSchool
       ? { ...participation, school: normalizedSchool as School }
       : participation;
@@ -52,7 +56,7 @@ function resolveRegion(participation: ParsedParticipation): Region | undefined {
   }
 
   if (region) {
-    const normalized = regionMapping[region.toLowerCase()];
+    const normalized = regionMapping[region];
     return (normalized as Region | undefined) ?? region;
   }
 
@@ -93,19 +97,11 @@ interface Percentiles {
 
 function calculatePercentiles(
   participations: ParsedParticipation[],
-  groupKey: keyof ParsedParticipation | null,
+  percentileRanking: EventMeta["percentileRanking"],
 ) {
-  const groups = new Map<unknown, ParsedParticipation[]>();
-
-  for (const participation of participations) {
-    const key = groupKey ? participation[groupKey] : null;
-    const group = groups.get(key);
-    if (group) {
-      group.push(participation);
-    } else {
-      groups.set(key, [participation]);
-    }
-  }
+  const groups = groupBy(participations, (participation) =>
+    getParticipationGroupKey(percentileRanking, participation),
+  );
 
   const results = new Array<ParsedParticipation & Percentiles>();
 
@@ -275,12 +271,15 @@ function buildSingleEvent(event: ParsedEvent): EventData {
   parsedParticipations = normalizeSchools(parsedParticipations);
   parsedParticipations = normalizeRegions(parsedParticipations);
 
+  const distributions = event.meta.percentileRanking
+    ? calculateDistributions(parsedParticipations, event.meta)
+    : undefined;
+
   if (event.meta.percentileRanking) {
-    const groupKey =
-      event.meta.percentileRanking === true
-        ? null
-        : event.meta.percentileRanking;
-    parsedParticipations = calculatePercentiles(parsedParticipations, groupKey);
+    parsedParticipations = calculatePercentiles(
+      parsedParticipations,
+      event.meta.percentileRanking,
+    );
   }
 
   const participations = addEventId(
@@ -307,11 +306,13 @@ function buildSingleEvent(event: ParsedEvent): EventData {
     id: event.id,
     meta: event.meta,
     participations,
+    distributions,
   };
 }
 
 export function buildEventData(
   parsedEvents: ParsedEvent[],
+  rcsoCatalogs: RcsoCatalog[],
 ): Map<EventId, EventData> {
   expandShortNames(parsedEvents);
   fixTypos(parsedEvents);
@@ -326,9 +327,17 @@ export function buildEventData(
     return a.id.localeCompare(b.id);
   });
 
+  const rcsoLevelIndex = buildRcsoLevelIndex(rcsoCatalogs);
   const eventsData = new Map<EventId, EventData>();
 
   for (const parsedEvent of parsedEvents) {
+    if (parsedEvent.meta.rcsoName) {
+      parsedEvent.meta = {
+        ...parsedEvent.meta,
+        rcsoLevel: resolveRcsoLevel(rcsoLevelIndex, parsedEvent.meta),
+      };
+    }
+
     const event = buildSingleEvent(parsedEvent);
     eventsData.set(event.id, event);
   }

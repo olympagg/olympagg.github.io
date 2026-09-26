@@ -6,7 +6,7 @@ import type {
   RegionData,
   SchoolData,
   TeamData,
-} from "../types";
+} from "@/data/types";
 import type {
   EventId,
   EventMeta,
@@ -14,7 +14,7 @@ import type {
   Region,
   School,
   Team,
-} from "../types/base";
+} from "@/data/types/base";
 
 export interface PersonSearchResult {
   type: "person";
