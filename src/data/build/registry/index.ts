@@ -1,35 +1,27 @@
 import type { EventId, ParticipationParser } from "@/data/types/base";
 
+import atomParsers from "./atom";
 import danoParsers from "./dano";
 import hseParsers from "./hse";
 import infopenParsers from "./infopen";
 import innoParsers from "./inno";
 import ioipParsers from "./ioip";
 import moshParsers from "./mosh";
+import ntoParsers from "./nto";
 import prodParsers from "./prod";
-import reoParsers from "./reo";
-import rmoParsers from "./rmo";
-import roaiParsers from "./roai";
-import rocsParsers from "./rocs";
-import roiParsers from "./roi";
-import rphoParsers from "./rpho";
-import rroParsers from "./rro";
+import vosParsers from "./vos";
 
 const parsers: Record<EventId, ParticipationParser> = {
+  ...atomParsers,
   ...danoParsers,
   ...hseParsers,
   ...innoParsers,
   ...infopenParsers,
   ...ioipParsers,
   ...moshParsers,
+  ...ntoParsers,
   ...prodParsers,
-  ...reoParsers,
-  ...rmoParsers,
-  ...roiParsers,
-  ...rocsParsers,
-  ...roaiParsers,
-  ...rphoParsers,
-  ...rroParsers,
+  ...vosParsers,
 };
 
 export default parsers;

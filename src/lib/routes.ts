@@ -22,6 +22,15 @@ export const routes = {
   person: (fullName: FullName) => `/person/${encodeSlug(fullName)}`,
   school: (school: School) => `/school/${encodeSlug(school)}`,
   region: (region: Region) => `/region/${encodeSlug(region)}`,
+  rcso: (year?: number) => (year != null ? `/rcso?year=${year}` : "/rcso"),
+  rcsoOlympiad: (name: string, year?: number) => {
+    const base = `/rcso/${encodeSlug(name)}`;
+    return year != null ? `${base}?year=${year}` : base;
+  },
+  rcsoTrack: (name: string, track: string, year?: number) => {
+    const base = `/rcso/${encodeSlug(name)}/${encodeSlug(track)}`;
+    return year != null ? `${base}#y${year}` : base;
+  },
 } as const;
 
 export function useEventParams(): { eventId: EventId } {
@@ -52,4 +61,17 @@ export function useSchoolParams(): { slug: Slug } {
 export function useRegionParams(): { slug: Slug } {
   const { slug = "" } = useParams();
   return { slug: slug as Slug };
+}
+
+export function useRcsoOlympiadParams(): { slug: Slug } {
+  const { olympiadSlug = "" } = useParams();
+  return { slug: olympiadSlug as Slug };
+}
+
+export function useRcsoTrackParams(): { olympiadSlug: Slug; trackSlug: Slug } {
+  const { olympiadSlug = "", trackSlug = "" } = useParams();
+  return {
+    olympiadSlug: olympiadSlug as Slug,
+    trackSlug: trackSlug as Slug,
+  };
 }

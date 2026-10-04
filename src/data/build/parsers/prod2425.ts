@@ -9,13 +9,12 @@ import {
   parseStatus,
 } from "@/data/build/parsers/utils/parse";
 import type { ParticipationParser, Team } from "@/data/types/base";
-
 import {
   parseTrack,
   ProdTeamCriteriaType,
   type ProdParticipation,
   type ProdTeamCriteriaValue,
-} from "../../types/prod";
+} from "@/data/types/prod";
 
 import { loadExcel, type WorkbookWrapper } from "./utils/excel";
 

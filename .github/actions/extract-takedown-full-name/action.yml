@@ -7,7 +7,7 @@ inputs:
     required: true
 
 outputs:
-  fio:
+  fullName:
     description: Extracted ФИО (trimmed)
     value: ${{ steps.parse.outputs.result }}
 
@@ -15,7 +15,7 @@ runs:
   using: composite
   steps:
     - id: parse
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       env:
         ISSUE_BODY: ${{ inputs.body }}
       with:
@@ -30,10 +30,10 @@ runs:
             return "";
           }
 
-          const fio = m[1].trim();
-          if (!fio || fio === "_No response_") {
+          const fullName = m[1].trim();
+          if (!fullName || fullName === "_No response_") {
             core.setFailed("ФИО field is empty");
             return "";
           }
 
-          return fio;
+          return fullName;

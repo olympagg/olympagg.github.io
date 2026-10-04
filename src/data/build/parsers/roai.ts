@@ -5,8 +5,7 @@ import {
 } from "@/data/build/parsers/utils/normalize";
 import type { ParticipationParser } from "@/data/types/base";
 import { ParticipationStatus } from "@/data/types/base";
-
-import type { IndividualParticipation } from "../../types/individual";
+import type { IndividualParticipation } from "@/data/types/individual";
 
 import { loadJson } from "./utils/json";
 import { parseGrade } from "./utils/parse";

@@ -7,10 +7,15 @@ import {
   normalizeSchool,
 } from "./utils/normalize";
 import { parseGrade, parseNumber, parseStatus } from "./utils/parse";
-import { loadPdfText, parseTableRows, PDF_PAGE_SEPARATOR } from "./utils/pdf";
+import {
+  loadPdfText,
+  parseTableRows,
+  PDF_PAGE_SEPARATOR,
+  type PdfTextMode,
+} from "./utils/pdf";
 
 const NUMERIC_RE = /^\d+$/;
-const PAGE_GRADE_REGEX = /(9|10|11) класс/;
+const PAGE_GRADE_REGEX = /(9|10|11)\s*класс/;
 
 const TASK_COLUMNS = ([1, 2, 3, 4, 5, 6, 7, 8] as const).map(
   (index) => `task${index}` as const,
@@ -81,15 +86,13 @@ type ParticipantRowWithOffset = Record<ParticipantColumnName, string> & {
   rowOffset: number;
 };
 
-type VosParserMode = "ocr" | "extract";
-
 interface VosParserOptions {
   url: string;
   columns?: AnyParticipantColumns;
   trackName?: string;
   maxTaskScore?: number;
   pages?: number[];
-  mode: VosParserMode;
+  mode?: PdfTextMode;
   ignoreRanksForGrades?: number[];
 }
 
@@ -99,7 +102,7 @@ export default class VosParser implements ParticipationParser {
   trackName?: string;
   maxTaskScore?: number;
   pages?: number[];
-  mode: VosParserMode;
+  mode?: PdfTextMode;
   ignoreRanksForGrades: number[];
 
   constructor(options: VosParserOptions) {
@@ -195,8 +198,8 @@ export default class VosParser implements ParticipationParser {
   async parse(): Promise<IndividualParticipation[]> {
     const text = await loadPdfText({
       url: this.url,
-      mode: this.mode,
       pages: this.pages,
+      mode: this.mode,
     });
     const rows = this.mergeCrossPageRows(
       text,

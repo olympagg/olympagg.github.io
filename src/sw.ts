@@ -37,6 +37,10 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (url.pathname === "/build-time.json") {
+    return;
+  }
+
   if (request.mode === "navigate") {
     event.respondWith(
       (async () => {

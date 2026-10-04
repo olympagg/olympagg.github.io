@@ -2,18 +2,45 @@ import HseParser from "@/data/build/parsers/hse";
 import type { EventId, ParticipationParser } from "@/data/types/base";
 
 const tracks = [
-  { id: "hsemath", name: "Математика", years: [2024, 2025, 2026] },
-  { id: "hseinf", name: "Информатика", years: [2024, 2025, 2026] },
+  {
+    id: "hsebus",
+    name: "Основы бизнеса",
+    years: [2022, 2023, 2024, 2025, 2026],
+  },
   { id: "hsedev", name: "Промышленное программирование", years: [2025, 2026] },
-  { id: "hseecon", name: "Экономика", years: [2024, 2025, 2026] },
-  { id: "hsephys", name: "Физика", years: [2024, 2025, 2026] },
-  { id: "hselaw", name: "Право", years: [2024, 2025, 2026] },
+  {
+    id: "hseeng",
+    name: "Инженерные науки",
+    years: [2022, 2023, 2024, 2025, 2026],
+  },
+  { id: "hsedsgn", name: "Дизайн", years: [2022, 2023, 2024, 2025, 2026] },
+  { id: "hseecon", name: "Экономика", years: [2022, 2023, 2024, 2025, 2026] },
+  {
+    id: "hsefin",
+    name: "Финансовая грамотность",
+    years: [2022, 2023, 2024, 2025, 2026],
+  },
+  {
+    id: "hseinf",
+    name: "Информатика",
+    years: [2022, 2023, 2024, 2025, 2026],
+  },
+  { id: "hselaw", name: "Право", years: [2022, 2023, 2024, 2025, 2026] },
+  { id: "hsemath", name: "Математика", years: [2022, 2023, 2024, 2025, 2026] },
+  { id: "hsephys", name: "Физика", years: [2022, 2023, 2024, 2025, 2026] },
+  {
+    id: "hsesocst",
+    name: "Обществознание",
+    years: [2022, 2023, 2024, 2025, 2026],
+  },
 ] as const;
 
 const passingScores: Record<number, string> = {
   2026: "https://olymp.hse.ru/mirror/pubs/share/1147188776.pdf",
   2025: "https://www.hse.ru/mirror/pubs/share/1032225258.pdf",
   2024: "https://www.hse.ru/data/2024/04/12/2146433407/критерии_2.pdf",
+  2023: "https://olymp.hse.ru/mirror/pubs/share/827235189.pdf",
+  2022: "https://olymp.hse.ru/mirror/pubs/share/586502165.pdf",
 };
 
 const hseParsers: Record<EventId, ParticipationParser> = Object.fromEntries(

@@ -64,7 +64,7 @@ async function llmNormalizeChunk(
 
     if (original !== value) {
       console.log(`${original} -> ${value}`);
-      mapping[original.toLowerCase()] = value;
+      mapping[original] = value;
     }
   }
 
@@ -100,7 +100,7 @@ export function applyReplacements(
   replacements: Record<string, string>,
 ): void {
   for (const [original, normalized] of Object.entries(mapping)) {
-    const replacement = replacements[normalized.toLowerCase()];
+    const replacement = replacements[normalized];
     if (replacement && replacement !== normalized) {
       mapping[original] = replacement;
     }

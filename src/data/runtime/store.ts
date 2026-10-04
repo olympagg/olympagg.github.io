@@ -19,7 +19,19 @@ import type {
   Slug,
   Team,
 } from "@/data/types/base";
+import type { RcsoCatalog, RcsoOlympiad, RcsoOrder } from "@/data/types/rcso";
+import { getAcademicYear } from "@/lib/academic";
 import { encodeSlug } from "@/lib/slug";
+
+export interface RcsoOlympiadHistoryEntry {
+  year: number;
+  order: RcsoOrder;
+  olympiad: RcsoOlympiad;
+}
+
+function rcsoEventKey(year: number, name: string, track: string): string {
+  return `${year}\0${name}\0${track}`;
+}
 
 function buildSlugIndex<K extends string>(keys: Iterable<K>): Map<Slug, K> {
   const index = new Map<Slug, K>();
@@ -47,12 +59,18 @@ export class DataStore {
   regionsData: Map<Region, RegionData>;
   schoolsData: Map<School, SchoolData>;
 
+  rcsoCatalogs: RcsoCatalog[];
+
   private nameIndex: Map<Slug, FullName>;
   private teamIndex: Map<Slug, Team>;
   private schoolIndex: Map<Slug, School>;
   private regionIndex: Map<Slug, Region>;
 
-  constructor(eventsData: EventData[]) {
+  private rcsoOlympiadIndex: Map<Slug, string>;
+  private rcsoTrackIndex: Map<string, Map<Slug, string>>;
+  private rcsoEventIndex: Map<string, EventId>;
+
+  constructor(eventsData: EventData[], rcsoCatalogs: RcsoCatalog[] = []) {
     this.eventsData = new Map(eventsData.map((event) => [event.id, event]));
     this.participationsData = buildParticipationsData(this.eventsData);
     this.teamsData = buildTeamData(this.eventsData);
@@ -70,6 +88,41 @@ export class DataStore {
     this.teamIndex = buildSlugIndex(teamNames);
     this.schoolIndex = buildSlugIndex(this.schoolsData.keys());
     this.regionIndex = buildSlugIndex(this.regionsData.keys());
+
+    this.rcsoCatalogs = [...rcsoCatalogs].sort((a, b) => a.year - b.year);
+
+    const olympiadNames = new Set<string>();
+    const trackNamesByOlympiad = new Map<string, Set<string>>();
+    for (const catalog of this.rcsoCatalogs) {
+      for (const olympiad of catalog.olympiads) {
+        olympiadNames.add(olympiad.name);
+        let trackNames = trackNamesByOlympiad.get(olympiad.name);
+        if (!trackNames) {
+          trackNames = new Set<string>();
+          trackNamesByOlympiad.set(olympiad.name, trackNames);
+        }
+        for (const track of olympiad.tracks) {
+          trackNames.add(track.name);
+        }
+      }
+    }
+    this.rcsoOlympiadIndex = buildSlugIndex(olympiadNames);
+    this.rcsoTrackIndex = new Map();
+    for (const [name, trackNames] of trackNamesByOlympiad) {
+      this.rcsoTrackIndex.set(name, buildSlugIndex(trackNames));
+    }
+
+    this.rcsoEventIndex = new Map();
+    for (const event of this.eventsData.values()) {
+      const { rcsoName, rcsoTrack } = event.meta;
+      if (rcsoName && rcsoTrack) {
+        const year = getAcademicYear(event.meta.date);
+        this.rcsoEventIndex.set(
+          rcsoEventKey(year, rcsoName, rcsoTrack),
+          event.id,
+        );
+      }
+    }
   }
 
   getEvents(): EventData[] {
@@ -150,5 +203,42 @@ export class DataStore {
       }
     }
     return teams;
+  }
+
+  getRcsoCatalogs(): RcsoCatalog[] {
+    return this.rcsoCatalogs;
+  }
+
+  getRcsoCatalog(year: number): RcsoCatalog | null {
+    return this.rcsoCatalogs.find((catalog) => catalog.year === year) ?? null;
+  }
+
+  getRcsoOlympiadName(slug: Slug): string | null {
+    return this.rcsoOlympiadIndex.get(slug) ?? null;
+  }
+
+  getRcsoTrackName(olympiadName: string, trackSlug: Slug): string | null {
+    return this.rcsoTrackIndex.get(olympiadName)?.get(trackSlug) ?? null;
+  }
+
+  getRcsoOlympiadHistory(name: string): RcsoOlympiadHistoryEntry[] {
+    const history: RcsoOlympiadHistoryEntry[] = [];
+    for (const catalog of this.rcsoCatalogs) {
+      const olympiad = catalog.olympiads.find((o) => o.name === name);
+      if (olympiad) {
+        history.push({ year: catalog.year, order: catalog.order, olympiad });
+      }
+    }
+    return history;
+  }
+
+  getEventIdByRcso(
+    year: number,
+    rcsoName: string,
+    rcsoTrack: string,
+  ): EventId | null {
+    return (
+      this.rcsoEventIndex.get(rcsoEventKey(year, rcsoName, rcsoTrack)) ?? null
+    );
   }
 }

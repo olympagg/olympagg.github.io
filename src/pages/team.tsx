@@ -160,9 +160,9 @@ export function TeamPage() {
   const teamScoreRaw = firstParticipation
     ? (firstParticipation.teamScore ?? firstParticipation.score)
     : 0;
-
   const totalTeams = store.getTeams(eventId)?.length ?? 0;
   const criterias = findTeamCriterias(teamData.participations);
+  const hasRegions = teamData.participations.some((p) => p.region);
   const hasTracks = teamData.participations.some((p) => p.track ?? null);
 
   return (
@@ -224,7 +224,7 @@ export function TeamPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>ФИО</TableHead>
-                <TableHead>Регион</TableHead>
+                {hasRegions && <TableHead>Регион</TableHead>}
                 {hasTracks && <TableHead>Трек</TableHead>}
                 <TableHead className="w-20 text-right">Балл</TableHead>
               </TableRow>
@@ -243,9 +243,11 @@ export function TeamPage() {
                     )}
                   >
                     <TableCell>{participation.fullName}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {region ?? "—"}
-                    </TableCell>
+                    {hasRegions && (
+                      <TableCell className="text-muted-foreground">
+                        {region ?? "—"}
+                      </TableCell>
+                    )}
                     {hasTracks && (
                       <TableCell>
                         {track ? formatShortTrackName(track) : "—"}

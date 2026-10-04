@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router";
 
 import { RootLayout } from "@/components/layout/root-layout";
 import { PageSkeleton } from "@/components/shared/loading-skeleton";
+import { NotFoundMessage } from "@/components/shared/not-found-message";
 import "./index.css";
 
 const HomePage = lazy(() =>
@@ -30,6 +31,15 @@ const SchoolPage = lazy(() =>
 );
 const RegionPage = lazy(() =>
   import("@/pages/region").then((m) => ({ default: m.RegionPage })),
+);
+const RcsoListPage = lazy(() =>
+  import("@/pages/rcso/list").then((m) => ({ default: m.RcsoListPage })),
+);
+const RcsoOlympiadPage = lazy(() =>
+  import("@/pages/rcso/detail").then((m) => ({ default: m.RcsoOlympiadPage })),
+);
+const RcsoTrackPage = lazy(() =>
+  import("@/pages/rcso/track").then((m) => ({ default: m.RcsoTrackPage })),
 );
 
 const fallback = <PageSkeleton />;
@@ -102,6 +112,34 @@ export function App() {
                 <RegionPage />
               </Suspense>
             }
+          />
+          <Route
+            path="rcso"
+            element={
+              <Suspense fallback={fallback}>
+                <RcsoListPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="rcso/:olympiadSlug"
+            element={
+              <Suspense fallback={fallback}>
+                <RcsoOlympiadPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="rcso/:olympiadSlug/:trackSlug"
+            element={
+              <Suspense fallback={fallback}>
+                <RcsoTrackPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="*"
+            element={<NotFoundMessage message="Страница не найдена" />}
           />
         </Route>
       </Routes>

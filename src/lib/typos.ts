@@ -1,7 +1,7 @@
 import type { FullName } from "@/data/types/base";
 import { MAX_TYPO_LEVENSHTEIN_DISTANCE } from "@/lib/constants";
 
-function isWithinLevenshtein(
+function isWithinEditDistance(
   a: string,
   b: string,
   maxDistance: number,
@@ -13,36 +13,45 @@ function isWithinLevenshtein(
     return false;
   }
 
-  const row = Array.from({ length: b.length + 1 }, (_, j) => j);
+  // Optimal string alignment: Levenshtein where swapping two adjacent
+  // characters costs 1. Needs the two previous rows for the swap case.
+  let prevPrev: number[] = [];
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
 
   for (let i = 1; i <= a.length; i++) {
-    let prevDiagonal = row[0]!;
-    row[0] = i;
-    let rowMin = row[0];
+    const row = [i];
+    let rowMin = i;
 
     for (let j = 1; j <= b.length; j++) {
-      const above = row[j]!;
-      row[j] =
+      let distance =
         a[i - 1] === b[j - 1]
-          ? prevDiagonal
-          : 1 + Math.min(prevDiagonal, above, row[j - 1]!);
-      prevDiagonal = above;
-      rowMin = Math.min(rowMin, row[j]!);
+          ? prev[j - 1]!
+          : 1 + Math.min(prev[j - 1]!, prev[j]!, row[j - 1]!);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        distance = Math.min(distance, prevPrev[j - 2]! + 1);
+      }
+      row[j] = distance;
+      rowMin = Math.min(rowMin, distance);
     }
 
     if (rowMin > maxDistance) {
       return false;
     }
+    prevPrev = prev;
+    prev = row;
   }
 
-  return row[b.length]! <= maxDistance;
+  return prev[b.length]! <= maxDistance;
 }
 
-function* deletionVariants(name: FullName): Generator<string> {
+function* editVariants(name: FullName): Generator<string> {
   const lower = name.toLowerCase();
   yield lower;
   for (let i = 0; i < lower.length; i++) {
     yield lower.slice(0, i) + lower.slice(i + 1);
+    if (i + 1 < lower.length && lower[i] !== lower[i + 1]) {
+      yield lower.slice(0, i) + lower[i + 1]! + lower[i]! + lower.slice(i + 2);
+    }
   }
 }
 
@@ -120,13 +129,15 @@ function collectComponent(
 }
 
 // Maps every typo name to its canonical form. Names within lowercased
-// Levenshtein distance 1 are treated as spelling variants of one person.
+// Damerau-Levenshtein distance 1 (a swap of adjacent letters counts as one
+// edit) are treated as spelling variants of one person.
 // Steps:
 //   1. Count how popular each name part (token) is across the whole dataset,
 //      weighted by participations.
-//   2. Index every name by its deletion variants (the word itself plus each
-//      one-character deletion) — two names can only be within distance 1 if
-//      they share a variant, which avoids an O(n^2) comparison.
+//   2. Index every name by its edit variants (the word itself, each
+//      one-character deletion and each adjacent-letter swap) — two names can
+//      only be within distance 1 if they share a variant, which avoids an
+//      O(n^2) comparison.
 //   3. For each variant bucket, verify the candidate pairs with the exact
 //      distance check and record them as an undirected neighbor graph.
 //   4. Split that graph into connected components (each component is one
@@ -146,7 +157,7 @@ export function buildTypoMapping(
 
   const namesByVariant = new Map<string, FullName[]>();
   for (const name of frequency.keys()) {
-    for (const variant of deletionVariants(name)) {
+    for (const variant of editVariants(name)) {
       const names = namesByVariant.get(variant);
       if (names) {
         names.push(name);
@@ -174,7 +185,7 @@ export function buildTypoMapping(
         const b = names[j]!.toLowerCase();
         if (
           a !== b &&
-          isWithinLevenshtein(a, b, MAX_TYPO_LEVENSHTEIN_DISTANCE)
+          isWithinEditDistance(a, b, MAX_TYPO_LEVENSHTEIN_DISTANCE)
         ) {
           link(names[i]!, names[j]!);
           link(names[j]!, names[i]!);
