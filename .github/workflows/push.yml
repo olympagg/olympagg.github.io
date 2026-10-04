@@ -17,9 +17,10 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          allow-unsafe-pr-checkout: true
 
       - uses: ./.github/actions/setup
 
@@ -46,14 +47,14 @@ jobs:
     permissions:
       contents: read
     env:
-      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
       PROXY_URL: ${{ secrets.PROXY_URL }}
       PROXY_DOMAINS: pcms.university.innopolis.ru
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          allow-unsafe-pr-checkout: true
 
       - uses: ./.github/actions/setup
 
@@ -66,7 +67,7 @@ jobs:
           test -d src/data/parsed || { echo "bun parse did not produce src/data/parsed/"; exit 1; }
 
       - name: Upload eventBundle artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: event-bundle
           path: src/data/eventBundle.json
@@ -122,10 +123,11 @@ jobs:
           gh run download "$PREV_RUN_ID" -R "$GITHUB_REPOSITORY" -n event-bundle -D /tmp/prev
           gh run download "$GITHUB_RUN_ID" -R "$GITHUB_REPOSITORY" -n event-bundle -D /tmp/curr
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         if: env.SKIP != 'true'
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          allow-unsafe-pr-checkout: true
 
       - uses: oven-sh/setup-bun@v2
         if: env.SKIP != 'true'
@@ -147,11 +149,13 @@ jobs:
       actions: read
       pages: write
       id-token: write
+      attestations: write
+      artifact-metadata: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup
 
@@ -167,11 +171,16 @@ jobs:
       - name: Build
         run: bun run build
 
+      - name: Attest build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: dist/**
+
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

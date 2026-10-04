@@ -13,13 +13,13 @@ jobs:
       issues: write
       actions: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
 
-      - name: Extract FIO
+      - name: Extract full name
         id: parse
-        uses: ./.github/actions/extract-takedown-fio
+        uses: ./.github/actions/extract-takedown-full-name
         with:
           body: ${{ github.event.issue.body }}
 
@@ -27,8 +27,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE: ${{ github.event.issue.number }}
-          FIO: ${{ steps.parse.outputs.fio }}
-        run: gh issue edit "$ISSUE" --title "[TAKEDOWN] $FIO"
+          FULL_NAME: ${{ steps.parse.outputs.fullName }}
+        run: gh issue edit "$ISSUE" --title "[TAKEDOWN] $FULL_NAME"
 
       - name: Download latest eventBundle artifact
         env:
@@ -47,13 +47,13 @@ jobs:
         id: find
         uses: ./.github/actions/find-takedown-canonical
         with:
-          fio: ${{ steps.parse.outputs.fio }}
+          fullName: ${{ steps.parse.outputs.fullName }}
           events-path: /tmp/data/eventBundle.json
 
       - name: Respond on issue
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
-          FIO: ${{ steps.parse.outputs.fio }}
+          FULL_NAME: ${{ steps.parse.outputs.fullName }}
           STATUS: ${{ steps.find.outputs.status }}
           CANONICAL: ${{ steps.find.outputs.canonical }}
           STAGE: ${{ steps.find.outputs.stage }}
@@ -61,7 +61,7 @@ jobs:
         with:
           script: |
             const fs = require("node:fs");
-            const fio = process.env.FIO;
+            const fullName = process.env.FULL_NAME;
             const status = process.env.STATUS;
             const canonical = process.env.CANONICAL;
             const stage = process.env.STAGE;
@@ -87,7 +87,7 @@ jobs:
 
             if (status === "not_found") {
               await comment(
-                `Не нашли **${fio}** на сайте. Пожалуйста, проверьте корректность ФИО, после чего отправьте новый запрос.`,
+                `Не нашли **${fullName}** на сайте. Пожалуйста, проверьте корректность ФИО, после чего отправьте новый запрос.`,
               );
               await close("not_planned");
               return;
@@ -96,7 +96,7 @@ jobs:
             if (status === "ambiguous") {
               const list = candidates.map((n) => `- \`${n}\``).join("\n");
               await comment(
-                `По запросу **${fio}** нашли несколько вариантов:\n\n${list}\n\nОткройте новый запрос с точным написанием нужного ФИО.`,
+                `По запросу **${fullName}** нашли несколько вариантов:\n\n${list}\n\nОткройте новый запрос с точным написанием нужного ФИО.`,
               );
               await close("not_planned");
               return;
@@ -132,14 +132,14 @@ jobs:
       issues: write
       actions: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract FIO
+      - name: Extract full name
         id: parse
-        uses: ./.github/actions/extract-takedown-fio
+        uses: ./.github/actions/extract-takedown-full-name
         with:
           body: ${{ github.event.issue.body }}
 
@@ -160,7 +160,7 @@ jobs:
         id: find
         uses: ./.github/actions/find-takedown-canonical
         with:
-          fio: ${{ steps.parse.outputs.fio }}
+          fullName: ${{ steps.parse.outputs.fullName }}
           events-path: /tmp/data/eventBundle.json
 
       - name: Guard against non-ok status
@@ -176,7 +176,7 @@ jobs:
           fi
 
       - name: Update excludeFullNames.json
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           CANONICAL: ${{ steps.find.outputs.canonical }}
         with:
