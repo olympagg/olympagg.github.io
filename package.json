@@ -7,7 +7,7 @@
     "dev": "BUN_PUBLIC_BUILD_ID=$(bun scripts/buildId.ts) BUN_PUBLIC_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) bun --hot src/index.ts",
     "build": "bun build.ts",
     "lint": "prettier . --ignore-path .gitignore --write --log-level warn && eslint . --fix && tsc --pretty && knip --no-progress",
-    "parse": "bun scripts/parse.ts",
+    "parse": "NODE_EXTRA_CA_CERTS=certs/russian-trusted-root-ca.pem bun scripts/parse.ts",
     "normalize:schools": "bun scripts/normalizeSchools.ts",
     "normalize:cities": "bun scripts/convertCities.ts",
     "normalize:regions": "bun scripts/normalizeRegions.ts",
