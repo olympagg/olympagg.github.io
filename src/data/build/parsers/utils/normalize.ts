@@ -69,6 +69,8 @@ export function normalizeCell(value: string): string {
 
 export function normalizeFullName(name: string): FullName {
   return normalizeCell(name)
+    .replace(/^\[\s*/, "") // [ at start
+    .replace(/\s*\.$/, "") // dot at end
     .replace(/ -/g, "")
     .replace(/\d\S*$/, "") as FullName;
 }

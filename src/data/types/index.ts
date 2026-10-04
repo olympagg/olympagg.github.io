@@ -60,6 +60,11 @@ export interface EventBundle {
   rcsoCatalogs: RcsoCatalog[];
 }
 
+export interface ParticipationHint {
+  name: string;
+  date: Date;
+}
+
 export interface PersonData {
   fullName: FullName;
   school: School | null;
@@ -70,6 +75,7 @@ export interface PersonData {
   medianZScore: number | null;
   favoriteTeammates: { fullName: FullName; count: number }[];
   participations: Participation[];
+  participationHints: ParticipationHint[];
 }
 
 export interface TeamData {

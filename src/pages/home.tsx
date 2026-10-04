@@ -32,7 +32,7 @@ interface GroupItem {
 
 type DisplayItem = EventItem | GroupItem;
 
-const MIN_GROUP_SIZE = 3;
+const MIN_GROUP_SIZE = 2;
 
 function buildDisplayItems(yearEvents: EventData[]) {
   const eventGroups = new Map<string, EventData[]>();

@@ -13,10 +13,11 @@ export type Slug = Brand<"Slug", string>;
 export type EventId = `${string}${Digit}${Digit}`;
 
 export type EventGroupName =
-  | "Высшая проба"
   | "Innopolis Open"
   | "Всероссийская олимпиада школьников"
-  | "Национальная технологическая олимпиада";
+  | "Высшая проба"
+  | "Национальная технологическая олимпиада"
+  | "Росатом";
 
 export enum ParticipationStatus {
   WINNER = "winner",
@@ -34,7 +35,7 @@ export enum WinnerDegree {
 export interface TaskScore {
   name: string;
   score: number;
-  maxScore: number;
+  maxScore?: number;
 }
 
 export interface EventMeta {

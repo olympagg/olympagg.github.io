@@ -7,6 +7,7 @@ const REPO_URL = "https://github.com/olympagg/olympagg.github.io";
 const FEEDBACK_URL = "https://forms.gle/GKFsoiGV8GeHEGZLA";
 const TAKEDOWN_URL = `${REPO_URL}/issues/new?template=takedown.yml`;
 
+const BUILD_ID = process.env.BUN_PUBLIC_BUILD_ID;
 const COMMIT_HASH = process.env.BUN_PUBLIC_COMMIT_HASH;
 
 function SimpleIcon({
@@ -45,8 +46,23 @@ export function Footer() {
             <SimpleIcon icon={siGithub} className="size-4" />
             <span>GitHub</span>
           </a>
-          {COMMIT_HASH ? (
-            <span className="px-2 py-1">Сборка {COMMIT_HASH}</span>
+          {BUILD_ID ? (
+            <span className="px-2 py-1">
+              Сборка {BUILD_ID}
+              {COMMIT_HASH ? (
+                <>
+                  , коммит{" "}
+                  <a
+                    href={`${REPO_URL}/commit/${COMMIT_HASH}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="transition-colors hover:text-foreground"
+                  >
+                    {COMMIT_HASH}
+                  </a>
+                </>
+              ) : null}
+            </span>
           ) : null}
         </div>
         <nav className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">

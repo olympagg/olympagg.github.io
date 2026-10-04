@@ -1,16 +1,14 @@
 import { toMarkdownPages } from "@nalinor/mupdf4llm";
 
-import { MISTRAL_OCR_MODEL } from "@/env";
-
-import { isCloudStorageUrl, resolveCloudStorageUrl } from "./cloud";
 import { storeInCache, getFromCache, fetchBuffer } from "./fetch";
-import { mistralClient } from "./mistral";
-import { normalizeOcr, normalizeRussian } from "./normalize";
+import { normalizeRussian } from "./normalize";
+
+export type PdfTextMode = "pdf" | "mixed";
 
 interface LoadPdfTextOptions {
   url: string;
-  mode?: "extract" | "ocr";
   pages?: number[];
+  mode?: PdfTextMode;
 }
 
 export const PDF_PAGE_SEPARATOR = "\n\n\f\n\n";
@@ -18,44 +16,28 @@ export const PDF_PAGE_SEPARATOR = "\n\n\f\n\n";
 export async function loadPdfText(
   options: LoadPdfTextOptions,
 ): Promise<string> {
-  const { url, mode = "extract", pages } = options;
+  const { url, pages, mode = "pdf" } = options;
+  const usesOcr = mode === "mixed";
 
-  if (mode === "extract") {
-    const buffer = await fetchBuffer(url);
-    const chunks = toMarkdownPages(buffer, {
-      pages,
-      tableStrategy: "lines",
-      elements: ["table"],
-    });
-    return chunks
-      .map((chunk) => normalizeRussian(chunk.text))
-      .join(PDF_PAGE_SEPARATOR);
-  }
-
-  const cacheUrl = `${url}.txt`;
+  const cacheUrl = `${url}.${mode}.pages-${pages?.join(",") ?? "all"}.txt`;
 
   const cached = await getFromCache(cacheUrl);
   if (cached) {
-    return normalizeOcr(new TextDecoder().decode(cached));
+    return normalizeRussian(new TextDecoder().decode(cached));
   }
 
-  let documentUrl = url;
-
-  if (isCloudStorageUrl(url)) {
-    const resolvedUrl = await resolveCloudStorageUrl(url);
-    const buffer = await fetchBuffer(resolvedUrl);
-    documentUrl = `data:application/pdf;base64,${Buffer.from(buffer).toString("base64")}`;
-  }
-
-  const result = await mistralClient.ocr.process({
-    model: MISTRAL_OCR_MODEL,
-    document: { type: "document_url", documentUrl },
+  const buffer = await fetchBuffer(url);
+  const chunks = await toMarkdownPages(buffer, {
     pages,
+    tableStrategy: usesOcr ? "pixels" : "lines",
+    textSource: usesOcr ? "auto" : "pdf",
+    elements: ["table"],
   });
+  const text = chunks.map((chunk) => chunk.text).join(PDF_PAGE_SEPARATOR);
 
-  const text = result.pages.map((p) => p.markdown).join(PDF_PAGE_SEPARATOR);
   await storeInCache(cacheUrl, new TextEncoder().encode(text).buffer);
-  return normalizeOcr(text);
+
+  return normalizeRussian(text);
 }
 
 function normalizeCellValue(raw: string): string {
@@ -68,18 +50,19 @@ export function parseTableRows<K extends string | number>(
 ): (Record<K, string> & { rowOffset: number })[] {
   const results = new Array<Record<K, string> & { rowOffset: number }>();
 
-  // Join cells wrapped across lines: a newline not followed by `|` is a
-  // soft wrap inside a cell. 1:1 replacement keeps offsets valid.
-  const flatText = text.replace(/\n(?!\|)/g, " ");
+  // Join cells wrapped across lines: a newline not followed by `|` is a soft
+  // wrap inside a cell, a blank line ends the table. 1:1 replacement keeps
+  // offsets valid.
+  const flatText = text.replace(/\n(?![|\n])/g, " ");
 
-  // Trailing `|` is optional: OCR may drop it for an empty last cell.
-  const rowPattern = new RegExp(
-    `^\\|` + `([^|\\n]*)\\|`.repeat(columns.length - 1) + `([^|\\n]*)\\|?`,
-    "gm",
-  );
-
-  for (const match of flatText.matchAll(rowPattern)) {
-    const parts = match.slice(1);
+  for (const match of flatText.matchAll(/^\|([^\n]*)\|$/gm)) {
+    // `\|` is a literal pipe inside a cell
+    const parts = match[1]!
+      .split(/(?<!\\)\|/)
+      .map((part) => part.replaceAll("\\|", "|"));
+    if (parts.length !== columns.length) {
+      continue;
+    }
 
     if (parts.every((part) => part.trim() === "---")) {
       continue;

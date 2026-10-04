@@ -1,4 +1,9 @@
-import type { FullName, ParticipationStatus, Team } from "@/data/types/base";
+import type {
+  FullName,
+  ParticipationStatus,
+  TaskScore,
+  Team,
+} from "@/data/types/base";
 
 export interface NTOParticipation {
   type: "nto";
@@ -7,10 +12,7 @@ export interface NTOParticipation {
   studyGrade: number;
   team: Team;
 
-  firstSubjectName: string;
-  firstSubjectScore: number;
-  secondSubjectName: string;
-  secondSubjectScore: number;
+  taskScores: TaskScore[];
   teamScore: number;
 
   workUrl?: string;

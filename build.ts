@@ -5,6 +5,8 @@ import path from "path";
 
 import plugin from "bun-plugin-tailwind";
 
+import { resolveBuildId, resolveCommitHash } from "./scripts/buildId";
+
 const formatFileSize = (bytes: number): string => {
   const units = ["B", "KB", "MB", "GB"];
   let size = bytes;
@@ -18,18 +20,6 @@ const formatFileSize = (bytes: number): string => {
   return `${size.toFixed(2)} ${units[unitIndex]}`;
 };
 
-const resolveCommitHash = (): string => {
-  const fromEnv = process.env.GITHUB_SHA ?? "";
-  if (fromEnv) {
-    return fromEnv.slice(0, 7);
-  }
-  const git = Bun.spawnSync(["git", "rev-parse", "--short", "HEAD"]);
-  if (git.exitCode === 0) {
-    return git.stdout.toString().trim();
-  }
-  return "unknown";
-};
-
 console.log("\n🚀 Starting build process...\n");
 
 const outdir = path.join(process.cwd(), "dist");
@@ -41,8 +31,9 @@ if (existsSync(outdir)) {
 
 const start = performance.now();
 
+const buildId = await resolveBuildId();
 const commitHash = resolveCommitHash();
-console.log(`🔖 Build id (commit): ${commitHash}\n`);
+console.log(`🔖 Build id: ${buildId}, commit: ${commitHash}\n`);
 
 const entrypoints = [...new Bun.Glob("**.html").scanSync("src")]
   .map((a) => path.resolve("src", a))
@@ -61,6 +52,7 @@ const result = await Bun.build({
   publicPath: "/",
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
+    "process.env.BUN_PUBLIC_BUILD_ID": JSON.stringify(buildId),
     "process.env.BUN_PUBLIC_COMMIT_HASH": JSON.stringify(commitHash),
   },
 });
@@ -85,7 +77,7 @@ const swResult = await Bun.build({
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
     __PRECACHE__: JSON.stringify(precache),
-    __BUILD_HASH__: JSON.stringify(commitHash),
+    __BUILD_HASH__: JSON.stringify(buildId),
   },
 });
 

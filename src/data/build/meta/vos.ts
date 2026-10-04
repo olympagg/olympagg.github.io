@@ -14,10 +14,11 @@ const reoEvents: EventMeta[] = expandMeta(
     percentileRanking: "participationGrade",
   },
   [
-    {
-      url: "https://экономика.физтехлицей.рф",
-      date: new Date("2026-04-21"),
-    },
+    // NOTE: ocr (too long)
+    // {
+    //   url: "https://экономика.физтехлицей.рф",
+    //   date: new Date("2026-04-21"),
+    // },
     {
       url: "https://vseros.hse.ru/econ/2025",
       date: new Date("2025-04-30"),
@@ -50,10 +51,11 @@ const rmoEvents: EventMeta[] = expandMeta(
       url: "https://math.siriusolymp.ru",
       date: new Date("2025-04-22"),
     },
-    {
-      url: "https://math.siriusolymp.ru",
-      date: new Date("2023-04-27"),
-    },
+    // NOTE: ocr (RapidOCR breaks full names on last page)
+    // {
+    //   url: "https://math.siriusolymp.ru",
+    //   date: new Date("2023-04-27"),
+    // },
     {
       url: "https://vsoshmath2022.edurm.ru",
       date: new Date("2022-04-23"),
@@ -84,7 +86,8 @@ const rocsEvents: EventMeta[] = expandMeta(
   },
   [
     { date: new Date("2026-03-28") },
-    { date: new Date("2025-04-25") },
+    // NOTE: ocr (lost 10th grade)
+    // { date: new Date("2025-04-25") },
     { date: new Date("2023-04-22") },
   ],
 );
@@ -119,10 +122,11 @@ const rphoEvents: EventMeta[] = expandMeta(
     percentileRanking: "participationGrade",
   },
   [
-    {
-      url: "https://всош-нур.рф/physics",
-      date: new Date("2026-04-11"),
-    },
+    // NOTE: ocr (too long)
+    // {
+    //   url: "https://всош-нур.рф/physics",
+    //   date: new Date("2026-04-11"),
+    // },
     // {
     //   url: "https://vsoshphys2025.edurm.ru",
     //   date: new Date("2025-04-10"),

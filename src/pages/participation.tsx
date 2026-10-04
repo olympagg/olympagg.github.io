@@ -1,5 +1,6 @@
 import {
   ExternalLink,
+  FilePen,
   GraduationCap,
   Info,
   type LucideIcon,
@@ -148,7 +149,25 @@ export function ParticipationPage() {
       {formatTrackName(track)}
     </MetaItem>
   ) : null;
-  const hasContext = region != null || school != null || gradeLabel != null;
+  const workItem = participation.workUrl ? (
+    <MetaItem
+      icon={FilePen}
+      href={participation.workUrl}
+      className="transition-colors hover:text-foreground"
+    >
+      Решение задач
+      <ExternalLink className="ml-1 inline size-3 align-[-0.1em] text-muted-foreground" />
+    </MetaItem>
+  ) : null;
+
+  const contextItemCount = [region, school, gradeLabel].filter(Boolean).length;
+  const resultItemCount =
+    1 +
+    Number(teamItem != null) +
+    Number(trackItem != null) +
+    Number(workItem != null);
+  const splitMetaRows = contextItemCount > 1 && resultItemCount > 1;
+
   const contextItems = (
     <>
       {region && (
@@ -215,19 +234,23 @@ export function ParticipationPage() {
         </p>
       </div>
 
-      {teamItem || trackItem ? (
+      {splitMetaRows ? (
         <div className="space-y-1.5">
-          {hasContext && <MetaRow>{contextItems}</MetaRow>}
+          <MetaRow>{contextItems}</MetaRow>
           <MetaRow>
             {statusItem}
             {teamItem}
             {trackItem}
+            {workItem}
           </MetaRow>
         </div>
       ) : (
         <MetaRow>
-          {statusItem}
           {contextItems}
+          {statusItem}
+          {teamItem}
+          {trackItem}
+          {workItem}
         </MetaRow>
       )}
 

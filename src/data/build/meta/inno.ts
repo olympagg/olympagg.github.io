@@ -6,7 +6,7 @@ const innoEvents: EventMeta[] = expandMeta(
     id: "innoinf",
     name: "Innopolis Open по информатике",
     groupName: "Innopolis Open",
-    rcsoName: "Innopolis Open",
+    rcsoName: "Международная олимпиада Иннополиса",
     rcsoTrack: "информатика",
     url: "https://dovuz.innopolis.university/pre-olympiads/innopolis-open/informatics",
     percentileRanking: true,

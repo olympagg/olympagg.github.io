@@ -1,4 +1,5 @@
 import type * as cheerio from "cheerio";
+import type { AnyNode } from "domhandler";
 
 import type {
   RcsoCatalog,
@@ -10,7 +11,7 @@ import type {
 import { loadHtml, parseHtmlTableRows } from "./utils/html";
 import { normalizeUrl } from "./utils/normalize";
 
-export const RCSO_ARCHIVE_YEARS = [2021, 2022, 2023, 2024, 2025] as const;
+export const RCSO_ARCHIVE_YEARS = [2021, 2022, 2023, 2024, 2025, 2026] as const;
 
 const RCSO_CATALOG_URL = "https://rsr-olymp.ru/archive/{year}";
 const ORDER_RE = /от\s+(\d{2})\.(\d{2})\.(\d{4})\s+№\s*(\d+)/;
@@ -79,12 +80,14 @@ function parseOrder($: cheerio.CheerioAPI, year: number): RcsoOrder {
   };
 }
 
-function parseTrack(cells: string[], offset: number, year: number): RcsoTrack {
-  const name = cells[offset]!;
-  const subjects = cells[offset + 1]!.split(/,\s*/)
+function parseTrack(
+  [name, subjectsText, levelText]: string[],
+  year: number,
+): RcsoTrack {
+  const subjects = subjectsText!
+    .split(/,\s*/)
     .map((subject) => subject.trim())
     .filter(Boolean);
-  const levelText = cells[offset + 2]!;
   const level = Number(levelText);
 
   if (level !== 1 && level !== 2 && level !== 3) {
@@ -93,7 +96,30 @@ function parseTrack(cells: string[], offset: number, year: number): RcsoTrack {
     );
   }
 
-  return { name, subjects, level };
+  return { name: name!, subjects, level };
+}
+
+function parseOlympiad(
+  $: cheerio.CheerioAPI,
+  rowElement: AnyNode,
+  number: number,
+  catalogName: string,
+): RcsoOlympiad {
+  // rsr-olymp.ru sometimes packs two space-separated URLs into one href
+  const href = $(rowElement)
+    .find("a[href]")
+    .first()
+    .attr("href")
+    ?.trim()
+    .split(/\s+/)[0];
+
+  return {
+    number,
+    name: normalizeRcsoName(catalogName),
+    catalogName,
+    ...(href ? { url: normalizeUrl(href) } : {}),
+    tracks: [],
+  };
 }
 
 async function parseRcsoYear(year: number): Promise<RcsoCatalog> {
@@ -103,48 +129,34 @@ async function parseRcsoYear(year: number): Promise<RcsoCatalog> {
   const order = parseOrder($, year);
 
   const olympiads: RcsoOlympiad[] = [];
-  let current: RcsoOlympiad | null = null;
 
   for (const { cells, rowElement } of parseHtmlTableRows(
     $("table.mainTableInfo tr"),
   )) {
-    if (cells.length === 3 && current) {
-      current.tracks.push(parseTrack(cells, 0, year));
+    if (cells.length !== 3 && cells.length !== 5) {
       continue;
     }
 
-    if (cells.length !== 5) {
-      continue;
+    if (cells.length === 5) {
+      const number = Number(cells[0]);
+      if (!Number.isFinite(number)) {
+        continue;
+      }
+
+      // Some years repeat an olympiad's number on its next track rows
+      if (olympiads.at(-1)?.number !== number) {
+        olympiads.push(parseOlympiad($, rowElement, number, cells[1]!));
+      }
     }
 
-    const number = Number(cells[0]);
-    if (!Number.isFinite(number)) {
-      continue;
-    }
-
-    // rsr-olymp.ru sometimes packs two space-separated URLs into one href — keep the first.
-    const href = $(rowElement)
-      .find("a[href]")
-      .first()
-      .attr("href")
-      ?.trim()
-      .split(/\s+/)[0];
-
-    current = {
-      number,
-      name: normalizeRcsoName(cells[1]!),
-      catalogName: cells[1]!,
-      ...(href ? { url: normalizeUrl(href) } : {}),
-      tracks: [parseTrack(cells, 2, year)],
-    };
-    olympiads.push(current);
+    olympiads.at(-1)?.tracks.push(parseTrack(cells.slice(-3), year));
   }
 
   if (olympiads.length === 0) {
     throw new Error(`RCSO ${year}: parsed 0 olympiads`);
   }
 
-  const lastNumber = olympiads[olympiads.length - 1]!.number;
+  const lastNumber = olympiads.at(-1)!.number;
   if (olympiads.length !== lastNumber) {
     throw new Error(
       `RCSO ${year}: catalog length ${olympiads.length} != last olympiad number ${lastNumber}`,

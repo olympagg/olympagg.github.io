@@ -42,7 +42,7 @@ If you encounter errors due to missing dependencies (errored type) or missing `e
 The `src/data` tree is split by execution phase: `build/` runs at build time (`bun parse`), `runtime/` runs in the browser. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full layout.
 
 1. **Collect** (`scripts/parse.ts` → `src/data/build/parsers/*`): fetch raw HTML/PDF/XLSX, parse to typed JSON in `src/data/parsed/`. PDFs use `@nalinor/mupdf4llm` / `mupdf` via `parsers/utils/pdf.ts`. XLSX via the `xlsx` package.
-2. **Normalize** (`scripts/normalize*.ts`): canonicalize schools/cities/regions; outputs the `normalized*.json` lookup tables. Uses Gemini (`@google/genai`) for fuzzy matching; the collectors use Mistral (`@mistralai/mistralai`) for OCR.
+2. **Normalize** (`scripts/normalize*.ts`): canonicalize schools/cities/regions; outputs the `normalized*.json` lookup tables. Uses Gemini (`@google/genai`) for fuzzy matching.
 3. **Ingest** (`src/data/runtime/`): at app load, processors merge parsed results into the in-memory store and build the FlexSearch index consumed by pages.
 
 When adding a new olympiad source: add a type in `src/data/types/`, a collector in `src/data/build/parsers/`, a registry entry in `src/data/build/registry/`, and event metadata in `src/data/build/meta/`. Wire it through `registry/index.ts` and `meta/index.ts`.

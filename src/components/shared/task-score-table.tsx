@@ -9,11 +9,13 @@ import {
 import type { TaskScore } from "@/data/types/base";
 import { formatNumber } from "@/lib/utils";
 
-function ScoreValue({ score, maxScore }: { score: number; maxScore: number }) {
+function ScoreValue({ score, maxScore }: { score: number; maxScore?: number }) {
   return (
     <span className="font-mono">
       {formatNumber(score)}
-      <span className="text-muted-foreground">/{formatNumber(maxScore)}</span>
+      {maxScore != null && (
+        <span className="text-muted-foreground">/{formatNumber(maxScore)}</span>
+      )}
     </span>
   );
 }

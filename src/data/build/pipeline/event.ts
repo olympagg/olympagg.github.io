@@ -331,10 +331,18 @@ export function buildEventData(
   const eventsData = new Map<EventId, EventData>();
 
   for (const parsedEvent of parsedEvents) {
-    if (parsedEvent.meta.rcsoName) {
+    // Do not fail when only one field is present as it makes
+    // using expandMeta for large events (e.g. NTO) simplier
+    if (parsedEvent.meta.rcsoName && parsedEvent.meta.rcsoTrack) {
       parsedEvent.meta = {
         ...parsedEvent.meta,
         rcsoLevel: resolveRcsoLevel(rcsoLevelIndex, parsedEvent.meta),
+      };
+    } else {
+      parsedEvent.meta = {
+        ...parsedEvent.meta,
+        rcsoName: undefined,
+        rcsoTrack: undefined,
       };
     }
 

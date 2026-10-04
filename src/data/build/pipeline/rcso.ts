@@ -28,12 +28,8 @@ export function resolveRcsoLevel(
   index: RcsoLevelIndex,
   meta: EventMeta,
 ): RcsoLevel {
-  if (!meta.rcsoTrack) {
-    throw new Error(`${meta.id}: rcsoName is set but rcsoTrack is missing`);
-  }
-
   const year = getAcademicYear(meta.date);
-  const level = index.get(year)?.get(meta.rcsoName!)?.get(meta.rcsoTrack);
+  const level = index.get(year)?.get(meta.rcsoName!)?.get(meta.rcsoTrack!);
 
   if (level === undefined) {
     throw new Error(
