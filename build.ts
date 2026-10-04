@@ -5,7 +5,7 @@ import path from "path";
 
 import plugin from "bun-plugin-tailwind";
 
-import { resolveBuildId, resolveCommitHash } from "./scripts/buildId";
+import { resolveBuildId } from "./scripts/buildId";
 
 const formatFileSize = (bytes: number): string => {
   const units = ["B", "KB", "MB", "GB"];
@@ -32,8 +32,8 @@ if (existsSync(outdir)) {
 const start = performance.now();
 
 const buildId = await resolveBuildId();
-const commitHash = resolveCommitHash();
-console.log(`🔖 Build id: ${buildId}, commit: ${commitHash}\n`);
+const buildTime = new Date().toISOString();
+console.log(`🔖 Build id: ${buildId}, built at: ${buildTime}\n`);
 
 const entrypoints = [...new Bun.Glob("**.html").scanSync("src")]
   .map((a) => path.resolve("src", a))
@@ -53,7 +53,7 @@ const result = await Bun.build({
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
     "process.env.BUN_PUBLIC_BUILD_ID": JSON.stringify(buildId),
-    "process.env.BUN_PUBLIC_COMMIT_HASH": JSON.stringify(commitHash),
+    "process.env.BUN_PUBLIC_BUILD_TIME": JSON.stringify(""),
   },
 });
 
@@ -102,6 +102,11 @@ console.table(outputTable);
 await Bun.write(
   path.join(outdir, "404.html"),
   Bun.file(path.join(outdir, "index.html")),
+);
+
+await Bun.write(
+  path.join(outdir, "build-time.json"),
+  JSON.stringify({ buildTime }),
 );
 
 console.log(`\n✅ Build completed in ${(end - start).toFixed(2)}ms\n`);

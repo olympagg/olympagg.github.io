@@ -8,7 +8,7 @@ const BUNDLE_PATH = path.resolve(
   "eventBundle.json",
 );
 
-export const resolveCommitHash = (): string => {
+const resolveCommitHash = (): string => {
   const fromEnv = process.env.GITHUB_SHA ?? "";
   if (fromEnv) {
     return fromEnv.slice(0, 7);
@@ -22,12 +22,6 @@ export const resolveCommitHash = (): string => {
   return "unknown";
 };
 
-const formatUtcTimestamp = (date: Date): string =>
-  date
-    .toISOString()
-    .replace(/\.\d+Z$/, "Z")
-    .replaceAll(/[-:]/g, "");
-
 const resolveBundleHash = async (): Promise<string> => {
   const file = Bun.file(BUNDLE_PATH);
   if (!(await file.exists())) {
@@ -40,7 +34,7 @@ const resolveBundleHash = async (): Promise<string> => {
 };
 
 export const resolveBuildId = async (): Promise<string> =>
-  `${formatUtcTimestamp(new Date())}${await resolveBundleHash()}`;
+  `${resolveCommitHash()}_${await resolveBundleHash()}`;
 
 if (import.meta.main) {
   console.log(await resolveBuildId());

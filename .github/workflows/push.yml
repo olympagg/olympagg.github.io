@@ -6,6 +6,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    - cron: "17 4 */5 * *"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.head_ref }}
@@ -136,7 +138,7 @@ jobs:
     needs: parse
     if: |
       needs.parse.result == 'success' &&
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') &&
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15

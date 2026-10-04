@@ -1,4 +1,5 @@
 import { MessageSquare, UserX } from "lucide-react";
+import { useEffect, useState } from "react";
 import { siGithub } from "simple-icons";
 
 import { cn } from "@/lib/utils";
@@ -8,7 +9,48 @@ const FEEDBACK_URL = "https://forms.gle/GKFsoiGV8GeHEGZLA";
 const TAKEDOWN_URL = `${REPO_URL}/issues/new?template=takedown.yml`;
 
 const BUILD_ID = process.env.BUN_PUBLIC_BUILD_ID;
-const COMMIT_HASH = process.env.BUN_PUBLIC_COMMIT_HASH;
+const DEV_BUILD_TIME = process.env.BUN_PUBLIC_BUILD_TIME;
+
+const buildTimeFormat = new Intl.DateTimeFormat("ru-RU", {
+  dateStyle: "short",
+  timeStyle: "short",
+  timeZone: "Europe/Moscow",
+});
+
+function BuildTime() {
+  const [buildTime, setBuildTime] = useState(DEV_BUILD_TIME ?? null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch("/build-time.json", { cache: "no-store", signal: controller.signal })
+      .then((response) => response.json() as Promise<{ buildTime: string }>)
+      .then((data) => {
+        setBuildTime(data.buildTime);
+      })
+      .catch(() => {
+        // Dev server and failed requests have no build-time.json; keep the fallback.
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  if (!buildTime) {
+    return null;
+  }
+
+  return (
+    <>
+      {" "}
+      от{" "}
+      <time dateTime={buildTime}>
+        {buildTimeFormat.format(new Date(buildTime))}
+      </time>
+    </>
+  );
+}
 
 function SimpleIcon({
   icon,
@@ -49,19 +91,7 @@ export function Footer() {
           {BUILD_ID ? (
             <span className="px-2 py-1">
               Сборка {BUILD_ID}
-              {COMMIT_HASH ? (
-                <>
-                  , коммит{" "}
-                  <a
-                    href={`${REPO_URL}/commit/${COMMIT_HASH}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="transition-colors hover:text-foreground"
-                  >
-                    {COMMIT_HASH}
-                  </a>
-                </>
-              ) : null}
+              <BuildTime />
             </span>
           ) : null}
         </div>

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "BUN_PUBLIC_BUILD_ID=$(bun scripts/buildId.ts) BUN_PUBLIC_COMMIT_HASH=$(git rev-parse --short=7 HEAD) bun --hot src/index.ts",
+    "dev": "BUN_PUBLIC_BUILD_ID=$(bun scripts/buildId.ts) BUN_PUBLIC_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) bun --hot src/index.ts",
     "build": "bun build.ts",
     "lint": "prettier . --ignore-path .gitignore --write --log-level warn && eslint . --fix && tsc --pretty && knip --no-progress",
     "parse": "bun scripts/parse.ts",
