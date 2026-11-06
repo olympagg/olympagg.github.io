@@ -56,7 +56,7 @@ function toResult(message: SandboxMessage): DiplomaLoadResult {
   if (!message.ok) {
     return { status: "error" };
   }
-  
+
   const diplomas = parseDiplomas(message.data);
   if (!diplomas) {
     return { status: "error" };
