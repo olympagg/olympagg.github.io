@@ -58,7 +58,8 @@ export function RcsoOlympiadPage() {
   const latest = history[history.length - 1]!.olympiad;
 
   const hasResults = tracks.some(
-    (track) => store.getEventIdByRcso(selectedYear, name, track.name) != null,
+    (track) =>
+      store.getEventIdsByRcso(selectedYear, name, track.name).length > 0,
   );
 
   return (
@@ -113,7 +114,7 @@ export function RcsoOlympiadPage() {
             </TableHeader>
             <TableBody>
               {tracks.map((track) => {
-                const eventId = store.getEventIdByRcso(
+                const eventIds = store.getEventIdsByRcso(
                   selectedYear,
                   name,
                   track.name,
@@ -150,16 +151,20 @@ export function RcsoOlympiadPage() {
                     </TableCell>
                     {hasResults && (
                       <TableCell>
-                        {eventId && (
+                        {eventIds.map((eventId) => (
                           <ExternalLinkText
+                            key={eventId}
+                            className="block whitespace-normal"
                             to={routes.event(eventId)}
                             onClick={(e) => {
                               e.stopPropagation();
                             }}
                           >
-                            Открыть
+                            {eventIds.length === 1
+                              ? "Открыть"
+                              : store.getEvent(eventId)!.meta.name}
                           </ExternalLinkText>
-                        )}
+                        ))}
                       </TableCell>
                     )}
                   </ClickableTableRow>

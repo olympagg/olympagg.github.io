@@ -155,7 +155,7 @@ export function ParticipationPage() {
       href={participation.workUrl}
       className="transition-colors hover:text-foreground"
     >
-      Решение задач
+      Решения задач
       <ExternalLink className="ml-1 inline size-3 align-[-0.1em] text-muted-foreground" />
     </MetaItem>
   ) : null;

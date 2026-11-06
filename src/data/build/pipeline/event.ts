@@ -1,7 +1,7 @@
 import { mean, standardDeviation } from "simple-statistics";
 
 import cityRegions from "@/data/cityRegions.json";
-import fullNameExclusions from "@/data/excludeFullNames.json";
+import excludedFullNameHashes from "@/data/excludeFullNameHashes.json";
 import normalizedRegions from "@/data/normalizedRegions.json";
 import normalizedSchools from "@/data/normalizedSchools.json";
 import type { EventData, ParsedParticipation } from "@/data/types";
@@ -21,16 +21,50 @@ import { calculateDistributions } from "./distribution";
 import { buildRcsoLevelIndex, resolveRcsoLevel } from "./rcso";
 
 const cityRegionsMapping: Record<string, string | null> = cityRegions;
-const fullNamesToExclude = new Set<string>(fullNameExclusions);
+const fullNameHashesToExclude = new Set<string>(excludedFullNameHashes);
 const schoolsMapping: Record<string, string> = normalizedSchools;
 const regionMapping: Record<string, string> = normalizedRegions;
 
-function excludeFullNames(participations: ParsedParticipation[]) {
-  return participations.map((participation) =>
-    fullNamesToExclude.has(participation.fullName ?? "")
-      ? { ...participation, fullName: undefined }
-      : participation,
+// The exclusion list stores sha256 of the hidden ФИО, so the public repo
+// doesn't spell out who asked to be hidden.
+function hashFullName(fullName: string): string {
+  return new Bun.CryptoHasher("sha256").update(fullName).digest("hex");
+}
+
+function excludeFullNames(
+  participations: ParsedParticipation[],
+  matchedHashes: Set<string>,
+) {
+  if (fullNameHashesToExclude.size === 0) {
+    return participations;
+  }
+  return participations.map((participation) => {
+    if (!participation.fullName) {
+      return participation;
+    }
+    const hash = hashFullName(participation.fullName);
+    if (!fullNameHashesToExclude.has(hash)) {
+      return participation;
+    }
+    matchedHashes.add(hash);
+    return { ...participation, fullName: undefined };
+  });
+}
+
+// A hash that matches nobody means the hidden person's ФИО changed (e.g. the
+// normalizer or typo fixing now spells it differently) and they are visible
+// again under the new spelling.
+function assertAllExclusionsMatched(matchedHashes: Set<string>): void {
+  const unmatched = [...fullNameHashesToExclude].filter(
+    (hash) => !matchedHashes.has(hash),
   );
+  if (unmatched.length > 0) {
+    throw new Error(
+      `excludeFullNameHashes.json: ${unmatched.length} hash(es) match no participant, ` +
+        `the hidden ФИО probably changed. Find the person's current ФИО and replace the hash:\n` +
+        unmatched.join("\n"),
+    );
+  }
 }
 
 function normalizeSchools(participations: ParsedParticipation[]) {
@@ -264,10 +298,13 @@ function fixTypos(parsedEvents: ParsedEvent[]): void {
   console.log(`Fixed ${mapping.size} typo names`);
 }
 
-function buildSingleEvent(event: ParsedEvent): EventData {
+function buildSingleEvent(
+  event: ParsedEvent,
+  matchedHashes: Set<string>,
+): EventData {
   let { parsedParticipations } = event;
 
-  parsedParticipations = excludeFullNames(parsedParticipations);
+  parsedParticipations = excludeFullNames(parsedParticipations, matchedHashes);
   parsedParticipations = normalizeSchools(parsedParticipations);
   parsedParticipations = normalizeRegions(parsedParticipations);
 
@@ -310,10 +347,15 @@ function buildSingleEvent(event: ParsedEvent): EventData {
   };
 }
 
-export function buildEventData(
-  parsedEvents: ParsedEvent[],
-  rcsoCatalogs: RcsoCatalog[],
-): Map<EventId, EventData> {
+export function buildEventData({
+  parsedEvents,
+  rcsoCatalogs,
+  checkExclusions,
+}: {
+  parsedEvents: ParsedEvent[];
+  rcsoCatalogs: RcsoCatalog[];
+  checkExclusions: boolean;
+}): Map<EventId, EventData> {
   expandShortNames(parsedEvents);
   fixTypos(parsedEvents);
 
@@ -329,6 +371,7 @@ export function buildEventData(
 
   const rcsoLevelIndex = buildRcsoLevelIndex(rcsoCatalogs);
   const eventsData = new Map<EventId, EventData>();
+  const matchedHashes = new Set<string>();
 
   for (const parsedEvent of parsedEvents) {
     // Do not fail when only one field is present as it makes
@@ -346,8 +389,12 @@ export function buildEventData(
       };
     }
 
-    const event = buildSingleEvent(parsedEvent);
+    const event = buildSingleEvent(parsedEvent, matchedHashes);
     eventsData.set(event.id, event);
+  }
+
+  if (checkExclusions) {
+    assertAllExclusionsMatched(matchedHashes);
   }
 
   return eventsData;

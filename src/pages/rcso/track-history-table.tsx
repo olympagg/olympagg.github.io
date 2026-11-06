@@ -48,7 +48,8 @@ export function RcsoTrackHistoryTable({
   }, [highlightYear]);
 
   const hasResults = rows.some(
-    ({ year }) => store.getEventIdByRcso(year, olympiadName, trackName) != null,
+    ({ year }) =>
+      store.getEventIdsByRcso(year, olympiadName, trackName).length > 0,
   );
 
   return (
@@ -64,7 +65,7 @@ export function RcsoTrackHistoryTable({
         </TableHeader>
         <TableBody>
           {rows.map(({ year, track }) => {
-            const eventId = store.getEventIdByRcso(
+            const eventIds = store.getEventIdsByRcso(
               year,
               olympiadName,
               trackName,
@@ -94,11 +95,17 @@ export function RcsoTrackHistoryTable({
                 </TableCell>
                 {hasResults && (
                   <TableCell>
-                    {eventId && (
-                      <ExternalLinkText to={routes.event(eventId)}>
-                        Открыть
+                    {eventIds.map((eventId) => (
+                      <ExternalLinkText
+                        key={eventId}
+                        className="block whitespace-normal"
+                        to={routes.event(eventId)}
+                      >
+                        {eventIds.length === 1
+                          ? "Открыть"
+                          : store.getEvent(eventId)!.meta.name}
                       </ExternalLinkText>
-                    )}
+                    ))}
                   </TableCell>
                 )}
               </TableRow>

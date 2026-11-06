@@ -31,6 +31,10 @@ export const routes = {
     const base = `/rcso/${encodeSlug(name)}/${encodeSlug(track)}`;
     return year != null ? `${base}#y${year}` : base;
   },
+  rcsoDiplomas: (fullName?: FullName) =>
+    fullName
+      ? `/rcso/diplomas#${new URLSearchParams({ name: fullName }).toString()}`
+      : "/rcso/diplomas",
 } as const;
 
 export function useEventParams(): { eventId: EventId } {

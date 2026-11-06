@@ -1,9 +1,10 @@
-import { ScrollText } from "lucide-react";
-import { useNavigate } from "react-router";
+import { Award, ScrollText } from "lucide-react";
+import { Link, useNavigate } from "react-router";
 
 import { DataTable } from "@/components/shared/data-table";
 import { NotFoundMessage } from "@/components/shared/not-found-message";
 import { YearPicker } from "@/components/shared/year-picker";
+import { Button } from "@/components/ui/button";
 import { useDataStore } from "@/contexts/data-context";
 import { useYearParam } from "@/hooks/year-param";
 import { routes } from "@/lib/routes";
@@ -36,10 +37,18 @@ export function RcsoListPage() {
       <title>{pageTitle("Перечень РСОШ")}</title>
 
       <div>
-        <h1 className="mb-3 flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <ScrollText className="size-6 shrink-0" />
-          Перечень олимпиад школьников
-        </h1>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+            <ScrollText className="size-6 shrink-0" />
+            Перечень олимпиад школьников
+          </h1>
+          <Button asChild variant="outline" size="sm">
+            <Link to={routes.rcsoDiplomas()}>
+              <Award />
+              Найти дипломы
+            </Link>
+          </Button>
+        </div>
         <YearPicker years={years} selected={selectedYear} onSelect={setYear} />
         <p className="mt-3 text-sm text-muted-foreground">
           Согласно{" "}

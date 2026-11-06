@@ -102,10 +102,12 @@ jobs:
               return;
             }
 
+            const { createHash } = require("node:crypto");
             const exclusions = JSON.parse(
-              fs.readFileSync("src/data/excludeFullNames.json", "utf8"),
+              fs.readFileSync("src/data/excludeFullNameHashes.json", "utf8"),
             );
-            if (exclusions.includes(canonical)) {
+            const hash = createHash("sha256").update(canonical).digest("hex");
+            if (exclusions.includes(hash)) {
               await comment(`ФИО **${canonical}** уже скрыто. Закрываю issue.`);
               await close("completed");
               return;
@@ -175,19 +177,20 @@ jobs:
             exit 1
           fi
 
-      - name: Update excludeFullNames.json
+      - name: Update excludeFullNameHashes.json
         uses: actions/github-script@v9
         env:
           CANONICAL: ${{ steps.find.outputs.canonical }}
         with:
           script: |
             const fs = require("node:fs");
-            const path = "src/data/excludeFullNames.json";
+            const { createHash } = require("node:crypto");
+            const path = "src/data/excludeFullNameHashes.json";
             const arr = JSON.parse(fs.readFileSync(path, "utf8"));
-            arr.push(process.env.CANONICAL);
-            const sorted = [...new Set(arr)].sort((a, b) =>
-              a.localeCompare(b, "ru"),
+            arr.push(
+              createHash("sha256").update(process.env.CANONICAL).digest("hex"),
             );
+            const sorted = [...new Set(arr)].sort();
             fs.writeFileSync(path, JSON.stringify(sorted, null, 2) + "\n");
 
       - name: Commit and push
@@ -197,7 +200,7 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          if git diff --quiet src/data/excludeFullNames.json; then
+          if git diff --quiet src/data/excludeFullNameHashes.json; then
             gh issue comment "$ISSUE" --body "ФИО уже было в списке исключений, изменения не требуются."
             gh issue close "$ISSUE" --reason completed
             exit 0
@@ -205,7 +208,7 @@ jobs:
 
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/data/excludeFullNames.json
+          git add src/data/excludeFullNameHashes.json
           git commit -m "takedown: hide person per #$ISSUE"
           git pull --rebase origin main
           git push origin main

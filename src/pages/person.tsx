@@ -1,4 +1,5 @@
 import {
+  Award,
   BarChart3,
   GraduationCap,
   MapPinned,
@@ -6,6 +7,7 @@ import {
   User,
   Users,
 } from "lucide-react";
+import { Link } from "react-router";
 
 import { BackButton } from "@/components/shared/back-button";
 import { ClickableTableRow } from "@/components/shared/clickable-table-row";
@@ -15,6 +17,7 @@ import { MetaItem, MetaRow } from "@/components/shared/meta-row";
 import { NotFoundMessage } from "@/components/shared/not-found-message";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -69,10 +72,18 @@ export function PersonPage() {
       <BackButton />
 
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <User className="size-6 shrink-0" />
-          {person.fullName}
-        </h1>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+            <User className="size-6 shrink-0" />
+            {person.fullName}
+          </h1>
+          <Button asChild variant="outline" size="sm" className="shrink-0">
+            <Link to={routes.rcsoDiplomas(person.fullName)}>
+              <Award />
+              Дипломы РСОШ
+            </Link>
+          </Button>
+        </div>
         <MetaRow className="mt-2">
           {person.region && (
             <MetaItem

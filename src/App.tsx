@@ -41,6 +41,11 @@ const RcsoOlympiadPage = lazy(() =>
 const RcsoTrackPage = lazy(() =>
   import("@/pages/rcso/track").then((m) => ({ default: m.RcsoTrackPage })),
 );
+const RcsoDiplomasPage = lazy(() =>
+  import("@/pages/rcso/diplomas").then((m) => ({
+    default: m.RcsoDiplomasPage,
+  })),
+);
 
 const fallback = <PageSkeleton />;
 
@@ -118,6 +123,14 @@ export function App() {
             element={
               <Suspense fallback={fallback}>
                 <RcsoListPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="rcso/diplomas"
+            element={
+              <Suspense fallback={fallback}>
+                <RcsoDiplomasPage />
               </Suspense>
             }
           />

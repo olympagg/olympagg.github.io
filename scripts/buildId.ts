@@ -34,7 +34,7 @@ const resolveBundleHash = async (): Promise<string> => {
 };
 
 export const resolveBuildId = async (): Promise<string> =>
-  `${resolveCommitHash()}_${await resolveBundleHash()}`;
+  `${resolveCommitHash()}${await resolveBundleHash()}`;
 
 if (import.meta.main) {
   console.log(await resolveBuildId());

@@ -68,7 +68,7 @@ export class DataStore {
 
   private rcsoOlympiadIndex: Map<Slug, string>;
   private rcsoTrackIndex: Map<string, Map<Slug, string>>;
-  private rcsoEventIndex: Map<string, EventId>;
+  private rcsoEventIndex: Map<string, EventId[]>;
 
   constructor(eventsData: EventData[], rcsoCatalogs: RcsoCatalog[] = []) {
     this.eventsData = new Map(eventsData.map((event) => [event.id, event]));
@@ -117,10 +117,10 @@ export class DataStore {
       const { rcsoName, rcsoTrack } = event.meta;
       if (rcsoName && rcsoTrack) {
         const year = getAcademicYear(event.meta.date);
-        this.rcsoEventIndex.set(
-          rcsoEventKey(year, rcsoName, rcsoTrack),
-          event.id,
-        );
+        const key = rcsoEventKey(year, rcsoName, rcsoTrack);
+        const ids = this.rcsoEventIndex.get(key) ?? [];
+        ids.push(event.id);
+        this.rcsoEventIndex.set(key, ids);
       }
     }
   }
@@ -232,13 +232,13 @@ export class DataStore {
     return history;
   }
 
-  getEventIdByRcso(
+  getEventIdsByRcso(
     year: number,
     rcsoName: string,
     rcsoTrack: string,
-  ): EventId | null {
+  ): readonly EventId[] {
     return (
-      this.rcsoEventIndex.get(rcsoEventKey(year, rcsoName, rcsoTrack)) ?? null
+      this.rcsoEventIndex.get(rcsoEventKey(year, rcsoName, rcsoTrack)) ?? []
     );
   }
 }

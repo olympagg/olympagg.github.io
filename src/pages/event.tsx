@@ -178,6 +178,16 @@ export function EventPage() {
     );
 
   const columns = buildColumns(hasTeams, hasGrades, eventId);
+  const terms = query
+    .toLocaleLowerCase("ru")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  const filteredParticipations = event.participations.filter((participation) =>
+    terms.every((term) =>
+      participation.fullName.toLocaleLowerCase("ru").includes(term),
+    ),
+  );
 
   return (
     <div className="space-y-6">
@@ -261,7 +271,7 @@ export function EventPage() {
         </div>
         <DataTable
           columns={columns}
-          data={event.participations}
+          data={filteredParticipations}
           onRowClick={(participation) => {
             void navigate(
               routes.participation(eventId, participation.fullName),

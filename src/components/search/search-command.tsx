@@ -232,7 +232,9 @@ export function SearchCommand({
       if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing) {
         return;
       }
-      if (e.key.length !== 1 || e.key === " ") {
+      // Browser autofill dispatches keydown events without a key.
+      const key = e.key as string | undefined;
+      if (key?.length !== 1 || key === " ") {
         return;
       }
       const el = document.activeElement;
@@ -250,7 +252,7 @@ export function SearchCommand({
       }
       e.preventDefault();
       input.focus();
-      setQuery((q) => q + e.key);
+      setQuery((q) => q + key);
       setFocused(true);
     };
     document.addEventListener("keydown", handler);

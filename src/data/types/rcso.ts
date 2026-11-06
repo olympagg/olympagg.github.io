@@ -25,3 +25,10 @@ export interface RcsoCatalog {
   order: RcsoOrder;
   olympiads: RcsoOlympiad[];
 }
+
+export interface RcsoDiploma {
+  code: string;
+  oa: string;
+  name: string;
+  form: string;
+}

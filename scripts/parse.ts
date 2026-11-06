@@ -61,7 +61,13 @@ for (const [eventId, parser] of Object.entries(parsers)) {
   parsedEvents.push({ id: eventId as EventId, meta, parsedParticipations });
 }
 
-const events = [...buildEventData(parsedEvents, rcsoCatalogs).values()];
+const events = [
+  ...buildEventData({
+    parsedEvents,
+    rcsoCatalogs,
+    checkExclusions: !eventsFilter,
+  }).values(),
+];
 
 await Bun.write(OUT_PATH, JSON.stringify({ events, rcsoCatalogs }));
 console.log(`\nWrote ${events.length} events to ${OUT_PATH}`);
