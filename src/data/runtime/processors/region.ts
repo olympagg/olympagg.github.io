@@ -1,5 +1,5 @@
-import type { PersonData, RegionData } from "../../types";
-import type { FullName, Region } from "../../types/base";
+import type { PersonData, RegionData } from "@/data/types";
+import type { FullName, Region } from "@/data/types/base";
 
 export function buildRegionData(
   personsData: Map<FullName, PersonData>,

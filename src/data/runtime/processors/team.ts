@@ -1,7 +1,6 @@
+import type { EventData, TeamData } from "@/data/types";
+import type { EventId, Team } from "@/data/types/base";
 import { sorted } from "@/lib/utils";
-
-import type { EventData, TeamData } from "../../types";
-import type { EventId, Team } from "../../types/base";
 
 function getTeamScore(teamData: TeamData) {
   const first = teamData.participations[0];

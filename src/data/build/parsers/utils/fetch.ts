@@ -7,8 +7,9 @@ import { PROXY_DOMAINS, PROXY_URL } from "@/env";
 import { isCloudStorageUrl, resolveCloudStorageUrl } from "./cloud";
 
 const CACHE_DATA_DIR = join(import.meta.dir, "..", "..", "..", "cache");
-
 const REQUEST_TIMEOUT = 10_000;
+
+const unavailableUrls = new Set<string>();
 
 function getCacheFileName(url: string) {
   const cacheKey = Bun.hash.xxHash3(url).toString(16);
@@ -50,13 +51,34 @@ function resolveProxy(url: string): string | undefined {
     : undefined;
 }
 
+async function tryFetchBuffer(
+  url: string,
+  options?: BunFetchRequestInit,
+): Promise<ArrayBuffer> {
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    console.error(
+      `[fetch] Failed to fetch ${url}: ${response.status} ${response.statusText}`,
+    );
+    throw new Error(
+      `Failed to fetch ${url}: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  return response.arrayBuffer();
+}
+
 export async function fetchBuffer(
   url: string,
   options?: BunFetchRequestInit,
 ): Promise<ArrayBuffer> {
-  const cached = await getFromCache(url);
-  if (cached) {
-    return cached;
+  const isGet = (options?.method ?? "GET").toUpperCase() === "GET";
+
+  if (isGet || unavailableUrls.has(url)) {
+    const cached = await getFromCache(url);
+    if (cached) {
+      return cached;
+    }
   }
 
   const fetchUrl = isCloudStorageUrl(url)
@@ -65,35 +87,30 @@ export async function fetchBuffer(
 
   const proxy = resolveProxy(fetchUrl);
 
-  const buffer = await pRetry(
-    async () => {
-      const response = await fetch(fetchUrl, {
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT),
-        proxy,
-        ...options,
-      });
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch ${url}: ${response.status} ${response.statusText}`,
-        );
-      }
-      return response.arrayBuffer();
-    },
-    {
-      retries: 5,
-      onFailedAttempt: ({ error, attemptNumber }) => {
-        console.warn(
-          `[fetch] Attempt ${attemptNumber} failed for ${url}`,
-          error,
-        );
+  try {
+    const buffer = await pRetry(
+      async () => {
+        return await tryFetchBuffer(fetchUrl, {
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT),
+          proxy,
+          ...options,
+        });
       },
-    },
-  );
+      { retries: 3 },
+    );
 
-  // Cache only GET requests
-  if ((options?.method ?? "GET").toUpperCase() === "GET") {
     await storeInCache(url, buffer);
-  }
+    return buffer;
+  } catch (error) {
+    unavailableUrls.add(url);
 
-  return buffer;
+    if (!isGet) {
+      const cached = await getFromCache(url);
+      if (cached) {
+        return cached;
+      }
+    }
+
+    throw error;
+  }
 }

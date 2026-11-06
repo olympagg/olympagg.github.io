@@ -1,6 +1,5 @@
+import InfopenParser from "@/data/build/parsers/infopen";
 import type { EventId, ParticipationParser } from "@/data/types/base";
-
-import InfopenParser from "../parsers/infopen";
 
 const infopenParsers: Record<EventId, ParticipationParser> = {
   infopen26: new InfopenParser({

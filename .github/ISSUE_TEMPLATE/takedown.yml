@@ -5,7 +5,7 @@ labels: [takedown]
 
 body:
   - type: input
-    id: fio
+    id: fullName
     attributes:
       label: ФИО (как указано в сервисе)
       placeholder: Иванов Иван Иванович

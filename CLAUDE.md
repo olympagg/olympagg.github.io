@@ -11,11 +11,15 @@ Default to Bun, never Node.js or Vite.
 
 Install dependencies by `bun install`.
 
-Then you need to fill `src/data/eventBundle.json` artifact (gitignored).
+`src/data/eventBundle.json` is required for build and running dev server.
 
-For linting and testing purposes, you can create this file with `{"events":[]}`. This will satisfy tsc.
+If it's missing in your environment, either run `bun parse` or fill the file with `{"events":[]}` (this will satisfy tsc).
 
-Otherwise, fetch `event-bundle` artifact from latest `push.yml` GitHub Actions pipeline run on main. Place this file at the path above.
+`bun parse` caches every fetched URL in `src/data/cache/`; re-fetches only happen when a URL isn't cached yet. It needs the user's consent only when the cache is empty (first run in this environment, or a newly added source).
+
+`bun parse <filter>` will only parse events whose id includes `<filter>`,
+emitting any other events. Use for quick testing. Run plain `bun parse` in the end
+to rebuild the bundle.
 
 ## Lint
 
@@ -38,7 +42,7 @@ If you encounter errors due to missing dependencies (errored type) or missing `e
 The `src/data` tree is split by execution phase: `build/` runs at build time (`bun parse`), `runtime/` runs in the browser. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full layout.
 
 1. **Collect** (`scripts/parse.ts` → `src/data/build/parsers/*`): fetch raw HTML/PDF/XLSX, parse to typed JSON in `src/data/parsed/`. PDFs use `@nalinor/mupdf4llm` / `mupdf` via `parsers/utils/pdf.ts`. XLSX via the `xlsx` package.
-2. **Normalize** (`scripts/normalize*.ts`): canonicalize schools/cities/regions; outputs the `normalized*.json` lookup tables. Uses Gemini (`@google/genai`) for fuzzy matching; the collectors use Mistral (`@mistralai/mistralai`) for OCR.
+2. **Normalize** (`scripts/normalize*.ts`): canonicalize schools/cities/regions; outputs the `normalized*.json` lookup tables. Uses Gemini (`@google/genai`) for fuzzy matching.
 3. **Ingest** (`src/data/runtime/`): at app load, processors merge parsed results into the in-memory store and build the FlexSearch index consumed by pages.
 
 When adding a new olympiad source: add a type in `src/data/types/`, a collector in `src/data/build/parsers/`, a registry entry in `src/data/build/registry/`, and event metadata in `src/data/build/meta/`. Wire it through `registry/index.ts` and `meta/index.ts`.

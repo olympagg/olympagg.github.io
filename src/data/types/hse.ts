@@ -13,6 +13,7 @@ export interface HSEParticipation {
   position: number;
   region: Region;
   participationGrade: number;
+  subject?: string;
 
   score: number;
   status: ParticipationStatus;

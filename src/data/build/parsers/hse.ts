@@ -3,17 +3,15 @@ import {
   parseNumber,
   parseStatus,
 } from "@/data/build/parsers/utils/parse";
-
 import {
   ParticipationStatus,
-  type FullName,
   type ParticipationParser,
   type Region,
-} from "../../types/base";
-import type { HSEParticipation } from "../../types/hse";
+} from "@/data/types/base";
+import type { HSEParticipation } from "@/data/types/hse";
 
 import { fetchBuffer } from "./utils/fetch";
-import { normalizeFullName, normalizeRussian } from "./utils/normalize";
+import { normalizeFullName } from "./utils/normalize";
 import { loadPdfText, parseTableRows } from "./utils/pdf";
 
 const PASSING_SCORES_GRADES = [
@@ -25,7 +23,7 @@ const PASSING_SCORES_COLUMNS = [
   ...PASSING_SCORES_GRADES.map((_, index) => String(index)),
 ] as const;
 
-const RESULTS_COLUMNS = [
+const RESULTS_COLUMNS_2024 = [
   "index",
   "position",
   "workCode",
@@ -33,7 +31,7 @@ const RESULTS_COLUMNS = [
   "score",
 ] as const;
 
-const WINNERS_COLUMNS = [
+const WINNERS_COLUMNS_2024 = [
   "index",
   "position",
   "code",
@@ -41,6 +39,37 @@ const WINNERS_COLUMNS = [
   "region",
   "score",
 ] as const;
+
+const RESULTS_COLUMNS = [...RESULTS_COLUMNS_2024, "subject"] as const;
+
+const WINNERS_COLUMNS = [...WINNERS_COLUMNS_2024, "subject"] as const;
+
+const RESULTS_COLUMNS_LEGACY = [
+  "index",
+  "workCode",
+  "region",
+  "score",
+] as const;
+
+const WINNERS_COLUMNS_LEGACY = [
+  "index",
+  "code",
+  "fullName",
+  "region",
+  "score",
+] as const;
+
+function getTableColumns(year: number) {
+  if (year <= 2023) {
+    return { results: RESULTS_COLUMNS_LEGACY, winners: WINNERS_COLUMNS_LEGACY };
+  }
+
+  if (year === 2024) {
+    return { results: RESULTS_COLUMNS_2024, winners: WINNERS_COLUMNS_2024 };
+  }
+
+  return { results: RESULTS_COLUMNS, winners: WINNERS_COLUMNS };
+}
 
 const NUMERIC_RE = /^\d+$/;
 
@@ -118,12 +147,17 @@ type OlympiadsResponse = [
 ];
 
 type TrackName =
+  | "Дизайн"
+  | "Инженерные науки"
   | "Информатика"
   | "Математика"
+  | "Обществознание"
+  | "Основы бизнеса"
+  | "Право"
   | "Промышленное программирование"
-  | "Экономика"
   | "Физика"
-  | "Право";
+  | "Финансовая грамотность"
+  | "Экономика";
 
 export default class HseParser implements ParticipationParser {
   olympiadsUrl = "https://olymp50.hse.ru/hseAnonymous/batch.js";
@@ -201,12 +235,10 @@ export default class HseParser implements ParticipationParser {
   async getPassingScores(): Promise<Map<number, number[]>> {
     const ocrText = await loadPdfText({
       url: this.passingScoresUrl,
-      mode: "ocr",
+      mode: "mixed",
     });
     const rows = parseTableRows(ocrText, PASSING_SCORES_COLUMNS);
-    const targetRow = rows.find(
-      (row) => normalizeRussian(row.track ?? "").trim() === this.trackName,
-    );
+    const targetRow = rows.find((row) => row.track === this.trackName);
 
     if (!targetRow) {
       throw new Error(
@@ -233,6 +265,7 @@ export default class HseParser implements ParticipationParser {
   async parse(): Promise<HSEParticipation[]> {
     const passingScores = await this.getPassingScores();
     const resultIds = await this.getResultIds();
+    const columns = getTableColumns(this.year);
 
     const participations: HSEParticipation[] = [];
 
@@ -243,84 +276,61 @@ export default class HseParser implements ParticipationParser {
       }
 
       const resultsUrl = this.resultsUrl.replace("{resultId}", resultId);
-      const resultsText = await loadPdfText({ url: resultsUrl });
-      const matches = parseTableRows(resultsText, RESULTS_COLUMNS).filter(
-        (row) => !isNaN(Number(row.index)) && row.index.trim() !== "",
+      const rows = parseTableRows(
+        await loadPdfText({ url: resultsUrl }),
+        columns.results,
+      ).filter((row) => NUMERIC_RE.test(row.index));
+
+      const winnersUrl = this.winnersUrl.replace("{resultId}", resultId);
+      const winnerRows = parseTableRows(
+        await loadPdfText({ url: winnersUrl }),
+        columns.winners,
+      ).filter((row) => NUMERIC_RE.test(row.index));
+
+      const winners = new Map(
+        winnerRows.map((row) => [
+          parseNumber(row.index),
+          { fullName: normalizeFullName(row.fullName), code: row.code },
+        ]),
       );
 
-      for (const row of matches) {
-        const position = parseNumber(row.index);
-        const score = parseNumber(row.score);
-        const region = normalizeRussian(row.region).trim() as Region;
-
-        const winnerDegree =
-          score >= gradePassingScores[0]!
-            ? "1"
-            : score >= gradePassingScores[1]!
-              ? "2"
-              : score >= gradePassingScores[2]!
-                ? "3"
-                : "none";
-
-        participations.push({
-          type: "hse",
-          position,
-          region,
-          participationGrade: grade,
-          score,
-          ...parseStatus(winnerDegree),
-        });
-      }
-
-      const parsedCount = matches.length;
-      const lastIndex = parseNumber(matches.at(-1)?.index ?? "0");
-      if (parsedCount !== lastIndex) {
+      const lastIndex = parseNumber(rows.at(-1)?.index ?? "0");
+      if (rows.length !== lastIndex) {
         throw new Error(
-          `Grade ${grade}: parsed ${parsedCount} rows but last sequential index is ${lastIndex}`,
+          `Grade ${grade}: parsed ${rows.length} rows but last sequential index is ${lastIndex}`,
         );
       }
-    }
-
-    const winnersMapping = new Map<
-      string,
-      { fullName: FullName; code: string }
-    >();
-
-    for (const [grade, resultId] of resultIds.entries()) {
-      const winnersUrl = this.winnersUrl.replace("{resultId}", resultId);
-      const winnersText = await loadPdfText({ url: winnersUrl });
-      const rows = parseTableRows(winnersText, WINNERS_COLUMNS);
 
       for (const row of rows) {
-        if (!NUMERIC_RE.test(row.index)) {
-          continue;
+        const position = parseNumber(row.index);
+        const score = parseNumber(row.score);
+        const degree =
+          gradePassingScores.findIndex(
+            (passingScore) => score >= passingScore,
+          ) + 1;
+        const { status, winnerDegree } = parseStatus(String(degree));
+
+        const winner = winners.get(position);
+        if (status !== ParticipationStatus.FINALIST && !winner) {
+          throw new Error(
+            `Missing fullName for winner: grade ${grade} pos ${position}`,
+          );
         }
 
-        const position = parseNumber(row.index);
-        winnersMapping.set(`${grade} ${position}`, {
-          fullName: normalizeFullName(row.fullName.trim()),
-          code: row.code.trim(),
+        participations.push({
+          ...winner,
+          type: "hse",
+          position,
+          region: row.region as Region,
+          participationGrade: grade,
+          subject: ("subject" in row && row.subject) || undefined,
+          score,
+          status,
+          winnerDegree,
         });
       }
     }
 
-    for (const participation of participations) {
-      const key = `${participation.participationGrade} ${participation.position}`;
-      if (
-        participation.status !== ParticipationStatus.FINALIST &&
-        !winnersMapping.has(key)
-      ) {
-        throw new Error(
-          `Missing fullName for winner: grade ${participation.participationGrade} pos ${participation.position}`,
-        );
-      }
-    }
-
-    return participations.map((participation) => ({
-      ...winnersMapping.get(
-        `${participation.participationGrade} ${participation.position}`,
-      ),
-      ...participation,
-    }));
+    return participations;
   }
 }

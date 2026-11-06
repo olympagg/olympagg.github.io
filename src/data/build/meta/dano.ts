@@ -1,19 +1,21 @@
+import { expandMeta } from "@/data/build/meta/utils";
 import type { EventMeta } from "@/data/types/base";
-import { expand } from "@/lib/utils";
 
-const danoEvents: EventMeta[] = expand(
+const danoEvents: EventMeta[] = expandMeta(
   {
+    id: "dano",
     name: "Национальная олимпиада по анализу данных DANO",
-    olympiadLevel: 3,
+    rcsoName: "Высшая проба",
+    rcsoTrack: "анализ данных",
     url: "https://dano.hse.ru",
     maxScore: 100,
     percentileRanking: "participationGrade",
   },
   [
-    { id: "dano25", date: new Date("2025-12-17") },
-    { id: "dano24", date: new Date("2024-12-18") },
-    { id: "dano23", date: new Date("2023-12-21") },
-    { id: "dano22", date: new Date("2022-12-22"), olympiadLevel: undefined },
+    { date: new Date("2025-12-17") },
+    { date: new Date("2024-12-18") },
+    { date: new Date("2023-12-21") },
+    { date: new Date("2022-12-22"), rcsoName: undefined },
   ],
 );
 

@@ -19,5 +19,3 @@ declare module "*.module.css" {
 }
 
 declare module "eslint-plugin-jsx-a11y";
-
-declare const COMMIT_HASH: string;

@@ -2,7 +2,7 @@ name: Find Takedown Canonical
 description: Match a user-provided ФИО against the latest eventBundle and return the canonical service-form fullName.
 
 inputs:
-  fio:
+  fullName:
     description: User-provided ФИО
     required: true
   events-path:
@@ -27,14 +27,14 @@ runs:
   using: composite
   steps:
     - id: search
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       env:
-        FIO: ${{ inputs.fio }}
+        FULL_NAME: ${{ inputs.fullName }}
         EVENTS_PATH: ${{ inputs.events-path }}
       with:
         script: |
           const fs = require("node:fs");
-          const fio = process.env.FIO;
+          const fullName = process.env.FULL_NAME;
 
           const norm = (s) =>
             s.toLowerCase().replaceAll("ё", "е").replace(/\s+/g, " ").trim();
@@ -81,7 +81,7 @@ runs:
           const bundle = JSON.parse(
             fs.readFileSync(process.env.EVENTS_PATH, "utf8"),
           );
-          const target = norm(fio);
+          const target = norm(fullName);
 
           // Two-stage search over normalized forms:
           //   1) normalized exact match (case/ё/whitespace-insensitive)

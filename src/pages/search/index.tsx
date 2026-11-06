@@ -166,12 +166,12 @@ export function SearchPage() {
         return false;
       }
       if (filters.level !== "all") {
-        if (filters.level === "none" && event.meta.olympiadLevel != null) {
+        if (filters.level === "none" && event.meta.rcsoLevel != null) {
           return false;
         }
         if (
           filters.level !== "none" &&
-          event.meta.olympiadLevel !== Number(filters.level)
+          event.meta.rcsoLevel !== Number(filters.level)
         ) {
           return false;
         }

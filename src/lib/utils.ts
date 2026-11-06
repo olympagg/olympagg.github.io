@@ -70,13 +70,6 @@ export function groupBy<T, K>(
   return map;
 }
 
-export function expand<const TBase extends object, const TItem extends object>(
-  base: TBase,
-  items: TItem[],
-): (TBase & TItem)[] {
-  return items.map((item) => ({ ...base, ...item }));
-}
-
 export function sorted<T>(
   items: Iterable<T>,
   keyFunction: (item: T) => number | string,

@@ -1,10 +1,9 @@
-import type { EventId, ParticipationParser } from "@/data/types/base";
-
 import PcmsParser, {
   PARTICIPANT_NAME_GRADE,
   PARTICIPANT_NAME_GRADE_CITY,
   PARTICIPANT_NAME_GRADE_REGION,
-} from "../parsers/pcms";
+} from "@/data/build/parsers/pcms";
+import type { EventId, ParticipationParser } from "@/data/types/base";
 
 const innoParsers: Record<EventId, ParticipationParser> = {
   innoinf26: new PcmsParser({
