@@ -14,7 +14,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useDataStore } from "@/contexts/data-context";
 import type { Participation } from "@/data/types";
 import type {
   DanoTeamCriteriaType,
@@ -24,6 +23,7 @@ import type {
   ProdTeamCriteriaType,
   ProdTeamCriteriaValue,
 } from "@/data/types/prod";
+import { useDataStore } from "@/hooks/data";
 import { formatShortTrackName } from "@/lib/format";
 import { routes, useTeamParams } from "@/lib/routes";
 import { pageTitle } from "@/lib/title";

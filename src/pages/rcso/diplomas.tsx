@@ -27,13 +27,13 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useDataStore } from "@/contexts/data-context";
 import {
   type FullName,
   ParticipationStatus,
   WinnerDegree,
 } from "@/data/types/base";
 import type { RcsoDiploma, RcsoLevel } from "@/data/types/rcso";
+import { useDataStore } from "@/hooks/data";
 import {
   type DiplomaQuery,
   type DiplomaYear,

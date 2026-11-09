@@ -19,9 +19,9 @@ import { NotFoundMessage } from "@/components/shared/not-found-message";
 import { ScoreDistributionChart } from "@/components/shared/score-distribution-chart";
 import { StatCard } from "@/components/shared/stat-card";
 import { TaskScoreTable } from "@/components/shared/task-score-table";
-import { useDataStore } from "@/contexts/data-context";
 import type { EventData, Participation } from "@/data/types";
 import { ParticipationStatus, WinnerDegree } from "@/data/types/base";
+import { useDataStore } from "@/hooks/data";
 import {
   extractFirstName,
   formatShortName,

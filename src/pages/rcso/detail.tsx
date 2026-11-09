@@ -17,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useDataStore } from "@/contexts/data-context";
+import { useDataStore } from "@/hooks/data";
 import { useYearParam } from "@/hooks/year-param";
 import { formatRcsoLevel, formatSubjects } from "@/lib/format";
 import { trackLevelTrend } from "@/lib/rcso";

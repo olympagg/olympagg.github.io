@@ -11,8 +11,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useDataStore } from "@/contexts/data-context";
 import type { RcsoOlympiadHistoryEntry } from "@/data/runtime/store";
+import { useDataStore } from "@/hooks/data";
 import { formatAcademicYear, formatRcsoLevel } from "@/lib/format";
 import { trackLevelTrend } from "@/lib/rcso";
 import { routes } from "@/lib/routes";

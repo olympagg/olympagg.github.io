@@ -7,7 +7,7 @@ import { PROXY_DOMAINS, PROXY_URL } from "@/env";
 import { isCloudStorageUrl, resolveCloudStorageUrl } from "./cloud";
 
 const CACHE_DATA_DIR = join(import.meta.dir, "..", "..", "..", "cache");
-const REQUEST_TIMEOUT = 10_000;
+const REQUEST_TIMEOUT = 30_000;
 
 const unavailableUrls = new Set<string>();
 

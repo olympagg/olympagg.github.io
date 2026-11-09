@@ -5,7 +5,7 @@ import { DataTable } from "@/components/shared/data-table";
 import { NotFoundMessage } from "@/components/shared/not-found-message";
 import { YearPicker } from "@/components/shared/year-picker";
 import { Button } from "@/components/ui/button";
-import { useDataStore } from "@/contexts/data-context";
+import { useDataStore } from "@/hooks/data";
 import { useYearParam } from "@/hooks/year-param";
 import { routes } from "@/lib/routes";
 import { pageTitle } from "@/lib/title";

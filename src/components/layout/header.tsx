@@ -1,9 +1,10 @@
 import { BarChart3 } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { Suspense, useLayoutEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 
 import { SearchCommand } from "@/components/search/search-command";
+import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { SegmentedPicker } from "@/components/shared/segmented-picker";
 import { cn } from "@/lib/utils";
 
@@ -89,11 +90,29 @@ export function Header() {
         </HeaderSlot>
 
         <div className="min-w-0 flex-1">
-          <SearchCommand
-            placeholder="Поиск"
-            className="h-9 rounded-md border border-input bg-muted/50"
-            onActiveChange={setSearchActive}
-          />
+          <ErrorBoundary
+            fallback={
+              <div className="flex h-9 items-center rounded-md border border-input bg-muted/50 px-3 text-sm text-muted-foreground">
+                Поиск недоступен
+              </div>
+            }
+          >
+            <Suspense
+              fallback={
+                <div
+                  aria-busy="true"
+                  aria-label="Загрузка поиска"
+                  className="h-9 animate-pulse rounded-md border border-input bg-muted/50"
+                />
+              }
+            >
+              <SearchCommand
+                placeholder="Поиск"
+                className="h-9 rounded-md border border-input bg-muted/50"
+                onActiveChange={setSearchActive}
+              />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       </div>
     </header>

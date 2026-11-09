@@ -1,6 +1,5 @@
 import { useDeferredValue, useMemo } from "react";
 
-import { useDataStore, useSearchIndex } from "@/contexts/data-context";
 import { FULL_LIMITS, runSearch } from "@/data/runtime/search";
 import type { SearchCounts } from "@/data/runtime/search";
 import type {
@@ -10,6 +9,7 @@ import type {
   SchoolData,
 } from "@/data/types";
 import type { EventId, EventMeta, Team } from "@/data/types/base";
+import { useDataStore, useSearchIndex } from "@/hooks/data";
 
 export interface TeamRow {
   team: Team;

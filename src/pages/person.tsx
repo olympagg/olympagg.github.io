@@ -28,7 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useDataStore } from "@/contexts/data-context";
+import { useDataStore } from "@/hooks/data";
 import { getGraduationLabel } from "@/lib/academic";
 import { extractFirstName } from "@/lib/format";
 import { routes, usePersonParams } from "@/lib/routes";

@@ -12,8 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useDataStore } from "@/contexts/data-context";
 import type { EventData } from "@/data/types";
+import { useDataStore } from "@/hooks/data";
 import { getAcademicYear } from "@/lib/academic";
 import { pageTitle } from "@/lib/title";
 import { cn, formatDate, groupBy, pluralize, sorted } from "@/lib/utils";

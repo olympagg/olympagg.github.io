@@ -3,7 +3,7 @@ import { Link } from "react-router";
 
 import { BackButton } from "@/components/shared/back-button";
 import { NotFoundMessage } from "@/components/shared/not-found-message";
-import { useDataStore } from "@/contexts/data-context";
+import { useDataStore } from "@/hooks/data";
 import { capitalize } from "@/lib/format";
 import { routes, useRcsoTrackParams } from "@/lib/routes";
 import { pageTitle } from "@/lib/title";
