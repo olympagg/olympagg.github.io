@@ -1,4 +1,5 @@
 import {
+  Award,
   BarChart3,
   GraduationCap,
   MapPinned,
@@ -11,9 +12,12 @@ import { Link } from "react-router";
 import { BackButton } from "@/components/shared/back-button";
 import { ClickableTableRow } from "@/components/shared/clickable-table-row";
 import { ExternalLinkText } from "@/components/shared/external-link";
+import { HelpPopover } from "@/components/shared/help-popover";
+import { MetaItem, MetaRow } from "@/components/shared/meta-row";
 import { NotFoundMessage } from "@/components/shared/not-found-message";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -24,7 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useDataStore } from "@/contexts/data-context";
+import { useDataStore } from "@/hooks/data";
 import { getGraduationLabel } from "@/lib/academic";
 import { extractFirstName } from "@/lib/format";
 import { routes, usePersonParams } from "@/lib/routes";
@@ -34,6 +38,7 @@ import {
   formatOptionalNumber,
   formatPercent,
   pluralize,
+  sorted,
 } from "@/lib/utils";
 
 export function PersonPage() {
@@ -48,6 +53,18 @@ export function PersonPage() {
   const graduationLabel = getGraduationLabel(person.graduationYear);
   const hasTeams = person.participations.some((p) => p.team);
   const firstName = extractFirstName(person.fullName);
+  const columnCount = hasTeams ? 5 : 4;
+
+  const rows = sorted(
+    [
+      ...person.participations.map((participation) => ({
+        participation,
+        date: store.getEvent(participation.eventId)!.meta.date,
+      })),
+      ...person.participationHints.map((hint) => ({ hint, date: hint.date })),
+    ],
+    (row) => -row.date.getTime(),
+  );
 
   return (
     <div className="space-y-6">
@@ -55,36 +72,41 @@ export function PersonPage() {
       <BackButton />
 
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <User className="size-6 shrink-0" />
-          {person.fullName}
-        </h1>
-        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-          {person.region && (
-            <Link
-              to={routes.region(person.region)}
-              className="flex items-center gap-1.5 transition-colors hover:text-foreground"
-            >
-              <MapPinned className="size-3.5" />
-              {person.region}
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+            <User className="size-6 shrink-0" />
+            {person.fullName}
+          </h1>
+          <Button asChild variant="outline" size="sm" className="shrink-0">
+            <Link to={routes.rcsoDiplomas(person.fullName)}>
+              <Award />
+              Дипломы РСОШ
             </Link>
+          </Button>
+        </div>
+        <MetaRow className="mt-2">
+          {person.region && (
+            <MetaItem
+              icon={MapPinned}
+              to={routes.region(person.region)}
+              className="transition-colors hover:text-foreground"
+            >
+              {person.region}
+            </MetaItem>
           )}
           {person.school && (
-            <Link
+            <MetaItem
+              icon={School}
               to={routes.school(person.school)}
-              className="flex items-center gap-1.5 transition-colors hover:text-foreground"
+              className="transition-colors hover:text-foreground"
             >
-              <School className="size-3.5" />
               {person.school}
-            </Link>
+            </MetaItem>
           )}
           {graduationLabel && (
-            <span className="flex items-center gap-1.5">
-              <GraduationCap className="size-3.5" />
-              {graduationLabel}
-            </span>
+            <MetaItem icon={GraduationCap}>{graduationLabel}</MetaItem>
           )}
-        </div>
+        </MetaRow>
       </div>
 
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
@@ -146,7 +168,30 @@ export function PersonPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {person.participations.map((participation) => {
+              {rows.map((row) => {
+                if ("hint" in row) {
+                  const { hint } = row;
+                  const year = hint.date.getFullYear();
+                  return (
+                    <TableRow
+                      key={`${hint.name}-${year}`}
+                      className="text-muted-foreground/60 hover:bg-transparent"
+                    >
+                      <TableCell colSpan={columnCount}>
+                        <div className="flex items-center gap-1.5">
+                          <span>
+                            {hint.name} {year} — нет данных об участии
+                          </span>
+                          <HelpPopover
+                            text={`У нас нет результатов этого мероприятия за ${year} год. Возможно, ${firstName} в нём участвовал(а), но точно мы этого не знаем`}
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+
+                const { participation } = row;
                 const event = store.getEvent(participation.eventId)!;
                 const team = participation.team;
 

@@ -1,3 +1,5 @@
+import pRetry, { AbortError } from "p-retry";
+
 const YANDEX_DISK_API =
   "https://cloud-api.yandex.net/v1/disk/public/resources/download";
 
@@ -39,6 +41,20 @@ function parseYandexDisk(url: string): {
   };
 }
 
+// Yandex Disk API answers 429 on bursts of requests
+const API_REQUEST_INTERVAL = 2_000;
+
+let nextApiRequestAt = 0;
+
+async function fetchYandexApi(apiUrl: string): Promise<Response> {
+  const now = Date.now();
+  const requestAt = Math.max(now, nextApiRequestAt);
+  nextApiRequestAt = requestAt + API_REQUEST_INTERVAL;
+  await Bun.sleep(requestAt - now);
+
+  return fetch(apiUrl);
+}
+
 async function resolveYandexUrl(url: string): Promise<string> {
   const parsed = parseYandexDisk(url);
   if (!parsed) {
@@ -49,15 +65,22 @@ async function resolveYandexUrl(url: string): Promise<string> {
     `${YANDEX_DISK_API}?public_key=${encodeURIComponent(parsed.publicKey)}` +
     (parsed.path ? `&path=${encodeURIComponent(parsed.path)}` : "");
 
-  const response = await fetch(apiUrl);
-  if (!response.ok) {
-    throw new Error(
-      `Failed to resolve Yandex URL: ${response.status} ${response.statusText}`,
-    );
-  }
+  return pRetry(
+    async () => {
+      const response = await fetchYandexApi(apiUrl);
+      if (!response.ok) {
+        const error = new Error(
+          `Failed to resolve Yandex URL ${url}: ${response.status} ${response.statusText}`,
+        );
+        const isTransient = response.status === 429 || response.status >= 500;
+        throw isTransient ? error : new AbortError(error);
+      }
 
-  const data = (await response.json()) as { href: string };
-  return data.href;
+      const data = (await response.json()) as { href: string };
+      return data.href;
+    },
+    { retries: 5, minTimeout: 5_000 },
+  );
 }
 
 export function isCloudStorageUrl(url: string): boolean {

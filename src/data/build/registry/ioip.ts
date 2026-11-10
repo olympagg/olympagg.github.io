@@ -1,9 +1,8 @@
-import type { EventId, ParticipationParser } from "@/data/types/base";
-
 import PcmsParser, {
   PARTICIPANT_NAME_CITY_BRACES,
   PARTICIPANT_NAME_REGION,
-} from "../parsers/pcms";
+} from "@/data/build/parsers/pcms";
+import type { EventId, ParticipationParser } from "@/data/types/base";
 
 const ioipParsers: Record<EventId, ParticipationParser> = {
   ioip26: new PcmsParser({

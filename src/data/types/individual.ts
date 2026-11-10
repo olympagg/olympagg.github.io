@@ -20,6 +20,7 @@ export interface IndividualParticipation {
 
   taskScores: TaskScore[];
   score: number;
+  workUrl?: string;
 
   status: ParticipationStatus;
   winnerDegree?: WinnerDegree;

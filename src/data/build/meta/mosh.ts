@@ -4,7 +4,8 @@ const moshEvents: EventMeta[] = [
   {
     id: "mosh26",
     name: "МОШ по информатике",
-    olympiadLevel: 1,
+    rcsoName: "Московская олимпиада школьников",
+    rcsoTrack: "информатика",
     url: "https://mos-inf.olimpiada.ru",
     date: new Date("2026-02-08"),
     maxScore: 500,

@@ -1,17 +1,26 @@
+import InfopenParser from "@/data/build/parsers/infopen";
+import { wayback } from "@/data/build/parsers/utils/archive";
 import type { EventId, ParticipationParser } from "@/data/types/base";
-
-import InfopenParser from "../parsers/infopen";
 
 const infopenParsers: Record<EventId, ParticipationParser> = {
   infopen26: new InfopenParser({
-    url: "https://inf-open.ru/2025-26/final-results/",
+    url: wayback(
+      "https://inf-open.ru/2025-26/final-results/",
+      "20260418194412",
+    ),
   }),
   infopen25: new InfopenParser({
-    url: "https://inf-open.ru/2024-25/final-results/",
+    url: wayback(
+      "https://inf-open.ru/2024-25/final-results/",
+      "20250716060500",
+    ),
   }),
   // Место | ФИО | Класс | Город | tasks | Итог | Диплом
   infopen24: new InfopenParser({
-    url: "https://inf-open.ru/2023-24/final-results/",
+    url: wayback(
+      "https://inf-open.ru/2023-24/final-results/",
+      "20250602003255",
+    ),
     hasParticipationGrade: false,
   }),
   // Место | Фамилия | Имя | Отчество | Класс | Город | tasks | Итог | Диплом

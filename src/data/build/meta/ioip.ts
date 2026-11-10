@@ -1,34 +1,31 @@
+import { expandMeta } from "@/data/build/meta/utils";
 import type { EventMeta } from "@/data/types/base";
-import { expand } from "@/lib/utils";
 
-const ioipEvents: EventMeta[] = expand(
+const ioipEvents: EventMeta[] = expandMeta(
   {
+    id: "ioip",
     name: "ИОИП",
-    olympiadLevel: 1,
+    rcsoName: "Олимпиада школьников по информатике и программированию",
+    rcsoTrack: "информатика",
     url: "https://neerc.ifmo.ru/school/ioip",
     percentileRanking: true,
     maxScore: 600,
   },
   [
     {
-      id: "ioip26",
       date: new Date("2026-04-05"),
     },
     {
-      id: "ioip25",
       date: new Date("2025-03-23"),
     },
     {
-      id: "ioip24",
       date: new Date("2024-03-24"),
       maxScore: 500,
     },
     {
-      id: "ioip23",
       date: new Date("2023-03-26"),
     },
     {
-      id: "ioip22",
       date: new Date("2022-03-19"),
       maxScore: 500,
     },

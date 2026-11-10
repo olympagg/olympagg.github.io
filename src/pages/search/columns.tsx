@@ -102,20 +102,17 @@ export const eventColumns = [
     ),
     cell: (info) => info.getValue(),
   }),
-  eventHelper.accessor(
-    (row) => row.meta.olympiadLevel ?? Number.MAX_SAFE_INTEGER,
-    {
-      id: "level",
-      header: ({ column }) => (
-        <SortableHeader column={column}>Уровень</SortableHeader>
-      ),
-      cell: (info) => (
-        <span className="text-muted-foreground">
-          {formatRcsoLevel(info.row.original.meta.olympiadLevel)}
-        </span>
-      ),
-    },
-  ),
+  eventHelper.accessor((row) => row.meta.rcsoLevel ?? Number.MAX_SAFE_INTEGER, {
+    id: "level",
+    header: ({ column }) => (
+      <SortableHeader column={column}>Уровень</SortableHeader>
+    ),
+    cell: (info) => (
+      <span className="text-muted-foreground">
+        {formatRcsoLevel(info.row.original.meta.rcsoLevel)}
+      </span>
+    ),
+  }),
   eventHelper.accessor((row) => row.participations.length, {
     id: "participations",
     header: ({ column }) => (

@@ -169,9 +169,12 @@ function SearchResultsList({
 export function SearchCommand({
   className,
   placeholder = "Поиск",
+  onActiveChange,
 }: {
   className?: string;
   placeholder?: string;
+  /** Fires when the bar gains/loses focus, so the layout can make room for it. */
+  onActiveChange?: (active: boolean) => void;
 }) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
@@ -201,6 +204,10 @@ export function SearchCommand({
   };
 
   useEffect(() => {
+    onActiveChange?.(focused);
+  }, [focused, onActiveChange]);
+
+  useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (
         containerRef.current &&
@@ -225,7 +232,9 @@ export function SearchCommand({
       if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing) {
         return;
       }
-      if (e.key.length !== 1 || e.key === " ") {
+      // Browser autofill dispatches keydown events without a key.
+      const key = e.key as string | undefined;
+      if (key?.length !== 1 || key === " ") {
         return;
       }
       const el = document.activeElement;
@@ -243,7 +252,7 @@ export function SearchCommand({
       }
       e.preventDefault();
       input.focus();
-      setQuery((q) => q + e.key);
+      setQuery((q) => q + key);
       setFocused(true);
     };
     document.addEventListener("keydown", handler);

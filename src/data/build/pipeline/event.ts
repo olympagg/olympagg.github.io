@@ -1,32 +1,70 @@
 import { mean, standardDeviation } from "simple-statistics";
 
-import { buildTypoMapping } from "@/lib/typos";
-import { round } from "@/lib/utils";
-
-import cityRegions from "../../cityRegions.json";
-import fullNameExclusions from "../../excludeFullNames.json";
-import normalizedRegions from "../../normalizedRegions.json";
-import normalizedSchools from "../../normalizedSchools.json";
-import type { EventData, ParsedParticipation } from "../../types";
+import cityRegions from "@/data/cityRegions.json";
+import excludedFullNameHashes from "@/data/excludeFullNameHashes.json";
+import normalizedRegions from "@/data/normalizedRegions.json";
+import normalizedSchools from "@/data/normalizedSchools.json";
+import type { EventData, ParsedParticipation } from "@/data/types";
 import type {
   EventId,
   EventMeta,
   FullName,
   Region,
   School,
-} from "../../types/base";
+} from "@/data/types/base";
+import type { RcsoCatalog } from "@/data/types/rcso";
+import { getParticipationGroupKey } from "@/lib/group";
+import { buildTypoMapping } from "@/lib/typos";
+import { groupBy, round } from "@/lib/utils";
+
+import { calculateDistributions } from "./distribution";
+import { buildRcsoLevelIndex, resolveRcsoLevel } from "./rcso";
 
 const cityRegionsMapping: Record<string, string | null> = cityRegions;
-const fullNamesToExclude = new Set<string>(fullNameExclusions);
+const fullNameHashesToExclude = new Set<string>(excludedFullNameHashes);
 const schoolsMapping: Record<string, string> = normalizedSchools;
 const regionMapping: Record<string, string> = normalizedRegions;
 
-function excludeFullNames(participations: ParsedParticipation[]) {
-  return participations.map((participation) =>
-    fullNamesToExclude.has(participation.fullName ?? "")
-      ? { ...participation, fullName: undefined }
-      : participation,
+// The exclusion list stores sha256 of the hidden ФИО, so the public repo
+// doesn't spell out who asked to be hidden.
+function hashFullName(fullName: string): string {
+  return new Bun.CryptoHasher("sha256").update(fullName).digest("hex");
+}
+
+function excludeFullNames(
+  participations: ParsedParticipation[],
+  matchedHashes: Set<string>,
+) {
+  if (fullNameHashesToExclude.size === 0) {
+    return participations;
+  }
+  return participations.map((participation) => {
+    if (!participation.fullName) {
+      return participation;
+    }
+    const hash = hashFullName(participation.fullName);
+    if (!fullNameHashesToExclude.has(hash)) {
+      return participation;
+    }
+    matchedHashes.add(hash);
+    return { ...participation, fullName: undefined };
+  });
+}
+
+// A hash that matches nobody means the hidden person's ФИО changed (e.g. the
+// normalizer or typo fixing now spells it differently) and they are visible
+// again under the new spelling.
+function assertAllExclusionsMatched(matchedHashes: Set<string>): void {
+  const unmatched = [...fullNameHashesToExclude].filter(
+    (hash) => !matchedHashes.has(hash),
   );
+  if (unmatched.length > 0) {
+    throw new Error(
+      `excludeFullNameHashes.json: ${unmatched.length} hash(es) match no participant, ` +
+        `the hidden ФИО probably changed. Find the person's current ФИО and replace the hash:\n` +
+        unmatched.join("\n"),
+    );
+  }
 }
 
 function normalizeSchools(participations: ParsedParticipation[]) {
@@ -34,7 +72,7 @@ function normalizeSchools(participations: ParsedParticipation[]) {
     if (!participation.school) {
       return participation;
     }
-    const normalizedSchool = schoolsMapping[participation.school.toLowerCase()];
+    const normalizedSchool = schoolsMapping[participation.school];
     return normalizedSchool
       ? { ...participation, school: normalizedSchool as School }
       : participation;
@@ -52,7 +90,7 @@ function resolveRegion(participation: ParsedParticipation): Region | undefined {
   }
 
   if (region) {
-    const normalized = regionMapping[region.toLowerCase()];
+    const normalized = regionMapping[region];
     return (normalized as Region | undefined) ?? region;
   }
 
@@ -93,19 +131,11 @@ interface Percentiles {
 
 function calculatePercentiles(
   participations: ParsedParticipation[],
-  groupKey: keyof ParsedParticipation | null,
+  percentileRanking: EventMeta["percentileRanking"],
 ) {
-  const groups = new Map<unknown, ParsedParticipation[]>();
-
-  for (const participation of participations) {
-    const key = groupKey ? participation[groupKey] : null;
-    const group = groups.get(key);
-    if (group) {
-      group.push(participation);
-    } else {
-      groups.set(key, [participation]);
-    }
-  }
+  const groups = groupBy(participations, (participation) =>
+    getParticipationGroupKey(percentileRanking, participation),
+  );
 
   const results = new Array<ParsedParticipation & Percentiles>();
 
@@ -268,19 +298,25 @@ function fixTypos(parsedEvents: ParsedEvent[]): void {
   console.log(`Fixed ${mapping.size} typo names`);
 }
 
-function buildSingleEvent(event: ParsedEvent): EventData {
+function buildSingleEvent(
+  event: ParsedEvent,
+  matchedHashes: Set<string>,
+): EventData {
   let { parsedParticipations } = event;
 
-  parsedParticipations = excludeFullNames(parsedParticipations);
+  parsedParticipations = excludeFullNames(parsedParticipations, matchedHashes);
   parsedParticipations = normalizeSchools(parsedParticipations);
   parsedParticipations = normalizeRegions(parsedParticipations);
 
+  const distributions = event.meta.percentileRanking
+    ? calculateDistributions(parsedParticipations, event.meta)
+    : undefined;
+
   if (event.meta.percentileRanking) {
-    const groupKey =
-      event.meta.percentileRanking === true
-        ? null
-        : event.meta.percentileRanking;
-    parsedParticipations = calculatePercentiles(parsedParticipations, groupKey);
+    parsedParticipations = calculatePercentiles(
+      parsedParticipations,
+      event.meta.percentileRanking,
+    );
   }
 
   const participations = addEventId(
@@ -307,12 +343,19 @@ function buildSingleEvent(event: ParsedEvent): EventData {
     id: event.id,
     meta: event.meta,
     participations,
+    distributions,
   };
 }
 
-export function buildEventData(
-  parsedEvents: ParsedEvent[],
-): Map<EventId, EventData> {
+export function buildEventData({
+  parsedEvents,
+  rcsoCatalogs,
+  checkExclusions,
+}: {
+  parsedEvents: ParsedEvent[];
+  rcsoCatalogs: RcsoCatalog[];
+  checkExclusions: boolean;
+}): Map<EventId, EventData> {
   expandShortNames(parsedEvents);
   fixTypos(parsedEvents);
 
@@ -326,11 +369,32 @@ export function buildEventData(
     return a.id.localeCompare(b.id);
   });
 
+  const rcsoLevelIndex = buildRcsoLevelIndex(rcsoCatalogs);
   const eventsData = new Map<EventId, EventData>();
+  const matchedHashes = new Set<string>();
 
   for (const parsedEvent of parsedEvents) {
-    const event = buildSingleEvent(parsedEvent);
+    // Do not fail when only one field is present as it makes
+    // using expandMeta for large events (e.g. NTO) simplier
+    if (parsedEvent.meta.rcsoName && parsedEvent.meta.rcsoTrack) {
+      parsedEvent.meta = {
+        ...parsedEvent.meta,
+        rcsoLevel: resolveRcsoLevel(rcsoLevelIndex, parsedEvent.meta),
+      };
+    } else {
+      parsedEvent.meta = {
+        ...parsedEvent.meta,
+        rcsoName: undefined,
+        rcsoTrack: undefined,
+      };
+    }
+
+    const event = buildSingleEvent(parsedEvent, matchedHashes);
     eventsData.set(event.id, event);
+  }
+
+  if (checkExclusions) {
+    assertAllExclusionsMatched(matchedHashes);
   }
 
   return eventsData;

@@ -1,24 +1,27 @@
 import { Badge } from "@/components/ui/badge";
-import { ParticipationStatus, type WinnerDegree } from "@/data/types/base";
-import { formatWinnerDegree } from "@/lib/format";
+import { ParticipationStatus, WinnerDegree } from "@/data/types/base";
+import {
+  formatWinnerDegree,
+  normalizeWinnerDegree,
+  STATUS_LABELS,
+} from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-const STATUS_CONFIG: Record<
-  ParticipationStatus,
-  { label: string; className: string }
+const STATUS_CLASSNAMES: Record<ParticipationStatus, string> = {
+  [ParticipationStatus.WINNER]: "bg-gold/20 text-gold border-gold/30",
+  [ParticipationStatus.PRIZE_WINNER]:
+    "bg-silver/20 text-silver border-silver/30",
+  [ParticipationStatus.FINALIST]:
+    "bg-muted text-muted-foreground border-border",
+};
+
+const DEGREE_CLASSNAMES: Record<
+  Exclude<WinnerDegree, WinnerDegree.NONE>,
+  string
 > = {
-  [ParticipationStatus.WINNER]: {
-    label: "Победитель",
-    className: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  },
-  [ParticipationStatus.PRIZE_WINNER]: {
-    label: "Призер",
-    className: "bg-sky-500/20 text-sky-400 border-sky-500/30",
-  },
-  [ParticipationStatus.FINALIST]: {
-    label: "Участник",
-    className: "bg-muted text-muted-foreground border-border",
-  },
+  [WinnerDegree.FIRST]: "bg-gold/20 text-gold border-gold/30",
+  [WinnerDegree.SECOND]: "bg-silver/20 text-silver border-silver/30",
+  [WinnerDegree.THIRD]: "bg-bronze/20 text-bronze border-bronze/30",
 };
 
 export function StatusBadge({
@@ -32,19 +35,22 @@ export function StatusBadge({
   className?: string;
   finalistAsBadge?: true;
 }) {
-  const config = STATUS_CONFIG[status];
-
   if (status === ParticipationStatus.FINALIST && !finalistAsBadge) {
     return (
       <span className={cn("text-sm text-muted-foreground", className)}>
-        {config.label}
+        {STATUS_LABELS[status]}
       </span>
     );
   }
 
+  const degree = normalizeWinnerDegree(winnerDegree);
+  const badgeClassName = degree
+    ? DEGREE_CLASSNAMES[degree]
+    : STATUS_CLASSNAMES[status];
+
   return (
-    <Badge variant="outline" className={cn(config.className, className)}>
-      {formatWinnerDegree(winnerDegree) ?? config.label}
+    <Badge variant="outline" className={cn(badgeClassName, className)}>
+      {formatWinnerDegree(degree) ?? STATUS_LABELS[status]}
     </Badge>
   );
 }

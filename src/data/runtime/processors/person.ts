@@ -1,15 +1,50 @@
 import { median } from "simple-statistics";
 
-import { getAcademicYearEnd } from "@/lib/academic";
-import { MAX_SCHOOL_GRADE, MIN_TEAMMATE_COUNT } from "@/lib/constants";
-
 import type {
   EventData,
   Participation,
+  ParticipationHint,
   PersonData,
   TeamData,
-} from "../../types";
-import type { EventId, FullName, Team } from "../../types/base";
+} from "@/data/types";
+import type { EventId, FullName, Team } from "@/data/types/base";
+import { getAcademicYearEnd } from "@/lib/academic";
+import { MAX_SCHOOL_GRADE, MIN_TEAMMATE_COUNT } from "@/lib/constants";
+import { groupBy, range, sorted } from "@/lib/utils";
+
+const HINT_GRADES_SPAN = 2;
+const HINT_EVENT_TYPES = new Set([
+  "ntoai",
+  "ntoar",
+  "ntoarch",
+  "ntoats",
+  "ntoavia",
+  "ntobdml",
+  "ntobio",
+  "ntobsec",
+  "ntocity",
+  "ntofly",
+  "ntofme",
+  "ntoge",
+  "ntoich",
+  "ntoies",
+  "ntomat",
+  "ntoncog",
+  "ntonucl",
+  "ntoqeng",
+  "ntourb",
+  "ntovr",
+  "ntowrls",
+  "reo",
+  "rmo",
+  "rocs",
+  "rpho",
+  "rro",
+]);
+
+function getEventType(eventId: EventId) {
+  return eventId.slice(0, -2);
+}
 
 function findGraduationYear(
   eventsData: Map<EventId, EventData>,
@@ -30,6 +65,58 @@ function findGraduationYear(
   }
 
   return null;
+}
+
+interface HintSource {
+  latest: EventData;
+  years: Set<number>;
+}
+
+function buildHintSources(
+  eventsData: Map<EventId, EventData>,
+): Map<string, HintSource> {
+  const hintSources = new Map<string, HintSource>();
+  const eventsByType = groupBy(eventsData.values(), (e) => getEventType(e.id));
+
+  for (const [type, events] of eventsByType) {
+    if (HINT_EVENT_TYPES.has(type)) {
+      hintSources.set(type, {
+        latest: sorted(events, (e) => e.id).at(-1)!,
+        years: new Set(events.map((e) => e.meta.date.getFullYear())),
+      });
+    }
+  }
+
+  return hintSources;
+}
+
+function findParticipationHints(
+  hintSources: Map<string, HintSource>,
+  participations: Participation[],
+  graduationYear: number | null,
+): ParticipationHint[] {
+  if (graduationYear == null) {
+    return [];
+  }
+
+  const today = new Date();
+  const types = new Set(participations.map((p) => getEventType(p.eventId)));
+
+  return [...types].flatMap((type) => {
+    const source = hintSources.get(type);
+    if (!source) {
+      return [];
+    }
+
+    return range(graduationYear - HINT_GRADES_SPAN, graduationYear + 1)
+      .filter((year) => !source.years.has(year))
+      .map((year) => {
+        const date = new Date(source.latest.meta.date);
+        date.setFullYear(year);
+        return { name: source.latest.meta.name, date };
+      })
+      .filter((hint) => hint.date <= today);
+  });
 }
 
 function findTeammates(
@@ -94,6 +181,8 @@ export function buildPersonData(
     }
   }
 
+  const hintSources = buildHintSources(eventsData);
+
   const persons = new Map<FullName, PersonData>();
   for (const [fullName, participations] of personParticipations.entries()) {
     const graduationYear = findGraduationYear(eventsData, participations);
@@ -134,6 +223,11 @@ export function buildPersonData(
       medianZScore,
       favoriteTeammates,
       participations,
+      participationHints: findParticipationHints(
+        hintSources,
+        participations,
+        graduationYear,
+      ),
     });
   }
 

@@ -5,6 +5,8 @@ import path from "path";
 
 import plugin from "bun-plugin-tailwind";
 
+import { resolveBuildId } from "./scripts/buildId";
+
 const formatFileSize = (bytes: number): string => {
   const units = ["B", "KB", "MB", "GB"];
   let size = bytes;
@@ -18,18 +20,6 @@ const formatFileSize = (bytes: number): string => {
   return `${size.toFixed(2)} ${units[unitIndex]}`;
 };
 
-const resolveCommitHash = (): string => {
-  const fromEnv = process.env.GITHUB_SHA ?? "";
-  if (fromEnv) {
-    return fromEnv.slice(0, 7);
-  }
-  const git = Bun.spawnSync(["git", "rev-parse", "--short", "HEAD"]);
-  if (git.exitCode === 0) {
-    return git.stdout.toString().trim();
-  }
-  return "unknown";
-};
-
 console.log("\n🚀 Starting build process...\n");
 
 const outdir = path.join(process.cwd(), "dist");
@@ -41,8 +31,9 @@ if (existsSync(outdir)) {
 
 const start = performance.now();
 
-const commitHash = resolveCommitHash();
-console.log(`🔖 Build id (commit): ${commitHash}\n`);
+const buildId = await resolveBuildId();
+const buildTime = new Date().toISOString();
+console.log(`🔖 Build id: ${buildId}, built at: ${buildTime}\n`);
 
 const entrypoints = [...new Bun.Glob("**.html").scanSync("src")]
   .map((a) => path.resolve("src", a))
@@ -56,12 +47,15 @@ const result = await Bun.build({
   outdir,
   plugins: [plugin],
   minify: true,
+  splitting: true,
+  metafile: true,
   target: "browser",
   sourcemap: "linked",
   publicPath: "/",
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
-    "process.env.BUN_PUBLIC_COMMIT_HASH": JSON.stringify(commitHash),
+    "process.env.BUN_PUBLIC_BUILD_ID": JSON.stringify(buildId),
+    "process.env.BUN_PUBLIC_BUILD_TIME": JSON.stringify(""),
   },
 });
 
@@ -85,7 +79,7 @@ const swResult = await Bun.build({
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
     __PRECACHE__: JSON.stringify(precache),
-    __BUILD_HASH__: JSON.stringify(commitHash),
+    __BUILD_HASH__: JSON.stringify(buildId),
   },
 });
 
@@ -107,9 +101,38 @@ const outputTable = result.outputs.map((output) => ({
 
 console.table(outputTable);
 
+// The data chunk is loaded via dynamic import() only after the entry chunk runs;
+// preload it so the download starts in parallel with the entry chunk. Low priority
+// keeps it from taking bandwidth from the entry chunk and CSS on slow connections.
+const dataInput = path.relative(
+  process.cwd(),
+  path.resolve("src", "data", "eventBundle.json"),
+);
+const dataChunk = Object.entries(result.metafile?.outputs ?? {}).find(
+  ([, output]) => dataInput in output.inputs,
+)?.[0];
+if (!dataChunk) {
+  console.error("❌ Could not find the eventBundle.json chunk to preload");
+  process.exit(1);
+}
+const indexPath = path.join(outdir, "index.html");
+const indexHtml = await Bun.file(indexPath).text();
+await Bun.write(
+  indexPath,
+  indexHtml.replace(
+    "</head>",
+    `<link rel="modulepreload" fetchpriority="low" crossorigin href="/${path.relative(outdir, path.resolve(outdir, dataChunk))}"></head>`,
+  ),
+);
+
 await Bun.write(
   path.join(outdir, "404.html"),
   Bun.file(path.join(outdir, "index.html")),
+);
+
+await Bun.write(
+  path.join(outdir, "build-time.json"),
+  JSON.stringify({ buildTime }),
 );
 
 console.log(`\n✅ Build completed in ${(end - start).toFixed(2)}ms\n`);

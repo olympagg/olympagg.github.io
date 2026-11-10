@@ -9,7 +9,13 @@ const SHELL = "/index.html";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(__PRECACHE__)),
+    caches.open(CACHE).then((cache) =>
+      // Bypass the HTTP cache: GitHub Pages serves max-age=600, so a stale
+      // index.html from the previous build could end up in the new cache.
+      cache.addAll(
+        __PRECACHE__.map((url) => new Request(url, { cache: "reload" })),
+      ),
+    ),
   );
 });
 
@@ -34,6 +40,10 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  if (url.pathname === "/build-time.json") {
     return;
   }
 

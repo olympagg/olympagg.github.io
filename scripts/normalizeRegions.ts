@@ -1,4 +1,4 @@
-import cityRegions from "../src/data/cityRegions.json";
+import cityRegions from "@/data/cityRegions.json";
 
 import {
   llmNormalize,

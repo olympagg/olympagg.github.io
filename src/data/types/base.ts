@@ -1,6 +1,8 @@
 import type { ParsedParticipation } from "@/data/types";
 import type { Brand, Digit } from "@/lib/types";
 
+import type { RcsoLevel } from "./rcso";
+
 export type FullName = Brand<"FullName", string>;
 export type Region = Brand<"Region", string>;
 export type City = Brand<"City", string>;
@@ -11,10 +13,11 @@ export type Slug = Brand<"Slug", string>;
 export type EventId = `${string}${Digit}${Digit}`;
 
 export type EventGroupName =
-  | "Высшая проба"
   | "Innopolis Open"
   | "Всероссийская олимпиада школьников"
-  | "Национальная технологическая олимпиада";
+  | "Высшая проба"
+  | "Национальная технологическая олимпиада"
+  | "Росатом";
 
 export enum ParticipationStatus {
   WINNER = "winner",
@@ -32,14 +35,16 @@ export enum WinnerDegree {
 export interface TaskScore {
   name: string;
   score: number;
-  maxScore: number;
+  maxScore?: number;
 }
 
 export interface EventMeta {
   id: EventId;
   name: string;
   groupName?: EventGroupName;
-  olympiadLevel?: 1 | 2 | 3;
+  rcsoName?: string;
+  rcsoTrack?: string;
+  rcsoLevel?: RcsoLevel;
   url: string;
   date: Date;
   maxScore: number;

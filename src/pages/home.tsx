@@ -12,8 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useDataStore } from "@/contexts/data-context";
 import type { EventData } from "@/data/types";
+import { useDataStore } from "@/hooks/data";
 import { getAcademicYear } from "@/lib/academic";
 import { pageTitle } from "@/lib/title";
 import { cn, formatDate, groupBy, pluralize, sorted } from "@/lib/utils";
@@ -32,7 +32,7 @@ interface GroupItem {
 
 type DisplayItem = EventItem | GroupItem;
 
-const MIN_GROUP_SIZE = 3;
+const MIN_GROUP_SIZE = 2;
 
 function buildDisplayItems(yearEvents: EventData[]) {
   const eventGroups = new Map<string, EventData[]>();
@@ -120,7 +120,7 @@ export function HomePage() {
             "мероприятий",
             "мероприятий",
           ])}{" "}
-          — всё в одном месте
+          — все в одном месте
         </p>
       </div>
 

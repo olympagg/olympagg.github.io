@@ -1,5 +1,5 @@
-import type { EventData, Participation } from "../../types";
-import type { EventId, FullName } from "../../types/base";
+import type { EventData, Participation } from "@/data/types";
+import type { EventId, FullName } from "@/data/types/base";
 
 export function buildParticipationsData(
   eventsData: Map<EventId, EventData>,

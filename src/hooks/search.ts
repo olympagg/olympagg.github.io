@@ -1,8 +1,8 @@
 import { useDeferredValue, useMemo } from "react";
 
-import { useSearchIndex } from "@/contexts/data-context";
 import { EMPTY_COUNTS, runSearch, searchCounts } from "@/data/runtime/search";
 import type { SearchCounts, SearchResult } from "@/data/runtime/search";
+import { useSearchIndex } from "@/hooks/data";
 
 export function useSearch(query: string): {
   results: SearchResult[];
