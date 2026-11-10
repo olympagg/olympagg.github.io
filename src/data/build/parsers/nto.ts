@@ -178,6 +178,22 @@ export default class NtoParser implements ParticipationParser {
     return participations;
   }
 
+  // Every work starts with the same protocol, so any downloadable one will do
+  async getProtocol(urls: Iterable<string>): Promise<NTOParticipation[]> {
+    let lastError: unknown;
+
+    for (const url of urls) {
+      try {
+        return await this.getParticipations(url);
+      } catch (error) {
+        console.warn(`[nto] Failed to load protocol from ${url}, trying next`);
+        lastError = error;
+      }
+    }
+
+    throw lastError;
+  }
+
   async parse(): Promise<NTOParticipation[]> {
     const workLinks = await this.getWorkLinks();
 
@@ -187,8 +203,7 @@ export default class NtoParser implements ParticipationParser {
       );
     }
 
-    const firstUrl = workLinks.values().next().value!;
-    const participations = await this.getParticipations(firstUrl);
+    const participations = await this.getProtocol(workLinks.values());
 
     return participations.map((participation) => {
       return {
